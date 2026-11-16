@@ -379,7 +379,7 @@ button.balchip.low:hover{background:#463d24;border-color:#7a6630}
         <div class="wiz-inner">
           <div class="wiz-title">先配置一个模型，我才能开始帮你写</div>
           <div class="wiz-sub">填一次就行，之后随时点右上角齿轮更换。密钥只保存在本机的配置文件里。</div>
-          <div class="wiz-sub" id="wizFeeNote" style="color:var(--dimmer);font-size:11.5px">计费：模型调用按厂商官方价格、由你直接支付；<b style="color:var(--accent2)">本项目不代收、不加价</b>（开源免费）；余额与每笔明细见右上角余额。</div>
+          <div class="wiz-sub" id="wizFeeNote" style="color:var(--dimmer);font-size:11.5px">花费：调用模型的费用由你的厂商账户直接结算，<b style="color:var(--accent2)">本软件不代收、不抽成</b>；余额与每笔明细见右上角余额。</div>
           <div id="wizOllama"></div>
           <div class="wgrid" id="wizProviders"></div>
           <div class="wform" id="wizForm">
@@ -446,7 +446,7 @@ button.balchip.low:hover{background:#463d24;border-color:#7a6630}
   <div class="bp-bal" id="bpBalBox"><span class="k">本月估算成本</span><span class="v" id="bpBalance">—</span></div>
   <div class="bp-warn" id="bpWarn" hidden>本地没有余额概念：模型费用由你的厂商账户直接结算</div>
   <div class="bp-month" id="bpMonth"></div>
-  <div class="bp-note">服务费：<b>无</b>。开源版不向用户收取任何费用；下方数字是<b>你自己的用量与估算成本</b>（按厂商单价算），不是账单。</div>
+  <div class="bp-note">本软件不收费，也没有余额和充值。下方数字是<b>你这次调用花掉多少</b>（按厂商单价估算），方便你估成本。</div>
   <div class="bp-list-title">最近 20 笔</div>
   <div class="bp-list" id="bpList"><div class="status">加载中…</div></div>
 </div>
@@ -558,16 +558,16 @@ button.balchip.low:hover{background:#463d24;border-color:#7a6630}
             <tr><td>1</td><td>cryptography</td><td class="mono">50.0.2</td><td class="mono">Apache-2.0 OR BSD-3-Clause</td><td class="yes">随包（LICENSE / LICENSE.APACHE / LICENSE.BSD）</td></tr>
             <tr><td>2</td><td>MarkupSafe</td><td class="mono">3.0.4</td><td class="mono">BSD-3-Clause</td><td class="yes">随包（licenses\LICENSE.txt）</td></tr>
             <tr><td>3</td><td>pyreadline3</td><td class="mono">3.5.6</td><td class="mono">BSD</td><td class="yes">随包（licenses\LICENSE.md）</td></tr>
-            <tr><td>4</td><td>pythonnet（程序集 Python.Runtime）</td><td class="mono">3.2.1</td><td class="mono unk">UNKNOWN</td><td class="unk">待补</td></tr>
-            <tr><td>5</td><td>pywebview</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">待补</td></tr>
-            <tr><td>6</td><td>clr_loader</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">待补</td></tr>
-            <tr><td>7</td><td>setuptools</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">待补</td></tr>
-            <tr><td>8</td><td>CPython 运行时</td><td class="mono">3.15.1</td><td class="mono unk">UNKNOWN</td><td class="unk">待补（版权串已实读，许可证文件未随包）</td></tr>
-            <tr><td>9</td><td>Microsoft WebView2 SDK</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">待补</td></tr>
-            <tr><td>10</td><td>VC++ 运行时（VCRUNTIME140 / VCRUNTIME140_1 / ucrtbase）</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">待补</td></tr>
+            <tr><td>4</td><td>pythonnet（程序集 Python.Runtime）</td><td class="mono">3.2.1</td><td class="mono unk">UNKNOWN</td><td class="unk">未随包提供</td></tr>
+            <tr><td>5</td><td>pywebview</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">未随包提供</td></tr>
+            <tr><td>6</td><td>clr_loader</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">未随包提供</td></tr>
+            <tr><td>7</td><td>setuptools</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">未随包提供</td></tr>
+            <tr><td>8</td><td>CPython 运行时</td><td class="mono">3.15.1</td><td class="mono unk">UNKNOWN</td><td class="unk">未随包提供（可向项目索取）</td></tr>
+            <tr><td>9</td><td>Microsoft WebView2 SDK</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">未随包提供</td></tr>
+            <tr><td>10</td><td>VC++ 运行时（VCRUNTIME140 / VCRUNTIME140_1 / ucrtbase）</td><td class="mono unk">UNKNOWN</td><td class="mono unk">UNKNOWN</td><td class="unk">未随包提供</td></tr>
           </tbody>
         </table>
-        <div class="msg info">部分组件许可文本待补，完整清单见安装目录 THIRD-PARTY-NOTICES。</div>
+        <div class="msg info">部分组件的许可文本未随包提供，完整清单见安装目录 THIRD-PARTY-NOTICES。</div>
         <div class="hintline">本产品使用了上述开源组件（事实陈述）；未获其作者或组织的官方支持、联合开发或背书。第 4–10 项的许可证全文需在构建期从各自上游取回并落到 安装根\licenses\；补齐前不声称「第三方组件许可齐全」。</div>
         <div class="hintline">许可正文本页不收录，避免与发布包内全文出现两处版本；判据以安装目录 <code>THIRD-PARTY-NOTICES</code> 与 <code>_internal\*\dist-info\licenses\*</code> 为准。</div>
       </div>
@@ -1523,7 +1523,7 @@ function renderWizard(){
     foot.style.display = '';
     foot.className = 'warnnote';
     foot.style.color = 'var(--dimmer)';
-    foot.textContent = '配置文件：' + setupState.configPath + (setupState.hasBackup ? '（保存前会备份 .bak）' : '');
+    foot.textContent = '配置保存在本机（每次保存前自动备份一份）';
   }
 }
 function applyCurrent(){
@@ -1835,7 +1835,7 @@ function renderBalancePanel(){
     ['本月消耗', m.cost == null ? '—' : fmtMoney(m.cost, 4)],
     ['本月调用', m.calls == null ? '—' : (fmtInt(m.calls) + ' 次')],
     ['其中官方', m.official == null ? '—' : fmtMoney(m.official, 4)],
-    ['服务费', '无（开源免费）']
+    ['额外费用', '无']
   ];
   $('bpMonth').innerHTML = cells.map(([k, v]) => '<div class="bp-cell"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + '</span></div>').join('');
   const list = accountState.items || [];
@@ -1965,7 +1965,7 @@ document.addEventListener('click', e => {
   var KEYS = ['shelf','startbook','write','outline','settings','breakdown','qc','style','billing'];
   var LABEL = { shelf:'书架', startbook:'开书', write:'写', outline:'大纲', settings:'设定库',
                 breakdown:'拆书', qc:'质检', style:'文风', billing:'账单' };
-  var TIP_MISSING = '（文件模式，专用面板待建）';
+  var TIP_MISSING = '（目前用文件方式编辑）';
   var apiState = {};   // key -> 'wired' | 'ui_only' | 'missing' | 'unknown'
   var apiName  = {};   // key -> 后端给的 name（用于提示文案，不覆盖 DOM 里的中文名）
   var apiRoute = {};
@@ -2043,7 +2043,7 @@ document.addEventListener('click', e => {
       if (st === 'missing') {
         missing++;
         el.classList.add('missing');
-        el.title = LABEL[k] + '：无专用路由，文件模式兜底' + TIP_MISSING +
+        el.title = LABEL[k] + '：当前用文件方式编辑';
                    '（兜底 /api/tree、/api/file、/api/save）';
         var f = document.createElement('span');
         f.className = 'entry-flag chip';
@@ -2052,7 +2052,7 @@ document.addEventListener('click', e => {
         el.appendChild(f);
       } else if (st === 'wired' || st === 'ui_only') {
         if (st === 'wired') wired++; else uiOnly++;
-        el.title = LABEL[k] + '：' + st + ' · ' + (apiRoute[k] || '');
+        el.title = LABEL[k] + (st === 'wired' ? '：可用' : '：基础可用');
       } else {
         unknown++;
         el.classList.add('missing');
@@ -2065,12 +2065,12 @@ document.addEventListener('click', e => {
       }
     });
     if (unknown === KEYS.length) {
-      chip('状态未知', 'GET /api/entries 不可用：入口按静态清单显示，未打三态标');
+      chip('状态未知', '暂时读不到功能自检信息，入口仍可点');
     } else if (unknown) {
-      chip('未知 ' + unknown, 'GET /api/entries 返回不完整，缺 ' + unknown + ' 项');
+      chip('未知 ' + unknown, '功能自检信息不完整，' + unknown + ' 项未上报');
     } else {
-      chip('wired ' + wired + ' · ui ' + uiOnly + ' · 缺 ' + missing,
-           'wired=' + wired + '，ui_only=' + uiOnly + '，missing=' + missing);
+      chip('自检：可用 ' + wired + ' · 基础 ' + uiOnly + ' · 待完善 ' + missing,
+           '完整可用 ' + wired + ' 项 · 基础可用 ' + uiOnly + ' 项 · 待完善 ' + missing + ' 项');
     }
   }
 

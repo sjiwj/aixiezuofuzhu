@@ -3430,7 +3430,7 @@ class H(BaseHTTPRequestHandler):
             except Exception:
                 _from_key = ''
             if _from_key not in CO.LAYER_ORDER:
-                self._json({'ok': False, 'error': 'from_layer 不认识：%s' % _from_raw,
+                self._json({'ok': False, 'error': '分层重跑的层名不对：%s（可选 L1–L4）' % _from_raw,
                             'layers': list(CO.LAYER_ORDER),
                             'hint': '可用：%s（也认中文：研究/思考/写作/质检）'
                                     % ' / '.join(CO.LAYER_ORDER)}, 400)
@@ -3472,7 +3472,7 @@ class H(BaseHTTPRequestHandler):
                           + '\n'.join('- ' + x for x in _lines))
         if mode == 'append':
             if not existing.strip():
-                self._json({'ok': False, 'error': 'append 模式要求该章已有正文（当前为空）'}, 400)
+                self._json({'ok': False, 'error': '这一章还没有正文，先写正文才能接着写'}, 400)
                 return
             tail = existing.strip()[-1200:]
             prompt = (prompt + '\n\n【本章已有正文（请接着往下写，不要重复已有内容）】\n' + tail)
