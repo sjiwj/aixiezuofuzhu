@@ -18,7 +18,7 @@ $dirty = @(git status --porcelain)
 Chk 'git:clean' ($dirty.Count -eq 0) "未提交改动 $($dirty.Count) 个（有就先 commit，避免带上未审内容）"
 
 # ---------- 2. 提交里不许有小说 / 密钥 / 禁区 ----------
-$novel = @(git grep -I -n -E '<书名>|沈砚|刘家庄|具状人' HEAD -- . 2>$null)
+$novel = @(git grep -I -n -E '<书名>|沈砚|刘家庄|具状人' HEAD -- . ':(exclude)scripts/_publish.ps1' 2>$null)
 Chk 'commit:no-novel' ($novel.Count -eq 0) "小说相关命中 $($novel.Count) 行"
 $keys = @(git grep -I -n -E 'sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}' HEAD -- . 2>$null)
 Chk 'commit:no-secret' ($keys.Count -eq 0) "密钥形态命中 $($keys.Count) 行"
