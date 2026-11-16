@@ -1,0 +1,8 @@
+{
+  "_note": "计费异常检测阈值（core/charge_guard.py）。改这里不用改代码。",
+  "calls_per_hour": 100,
+  "cny_per_hour": 5.0,
+  "distinct_ips": 3,
+  "spike_ratio": 10,
+  "spike_min_calls": 10
+}

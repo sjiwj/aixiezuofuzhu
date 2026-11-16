@@ -1,0 +1,24 @@
+{
+  "note": "Step 2 重点章判定。tiers 里每一级可覆盖 model / thinking / max_tokens；判定规则见 core/tier.py。",
+  "enabled": true,
+  "key_chapters": [
+    1,
+    2,
+    3
+  ],
+  "tiers": {
+    "normal": {
+      "model": ""
+    },
+    "key": {
+      "model": "deepseek-v4-pro",
+      "thinking": true,
+      "max_tokens": 20000
+    },
+    "arc_end": {
+      "model": "deepseek-v4-pro",
+      "thinking": true,
+      "max_tokens": 24000
+    }
+  }
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>灵石账本 · 炼字复刻 Demo</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#252a34;--fg:#e6e8ee;--mut:#8b93a7;--acc:#4f8cff;--ok:#2fbf71;--warn:#e0a33e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:28px 20px}
+h1{font-size:18px;margin:0 0 4px}.sub{color:var(--mut);font-size:12px;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+label{display:block;color:var(--mut);font-size:12px;margin:10px 0 4px}
+select,input{width:100%;background:#0d1015;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+.row{display:flex;gap:10px}.row>div{flex:1}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;margin:12px 8px 0 0}
+button.ghost{background:#222834;color:var(--fg)}
+.bal{display:flex;gap:10px;margin-top:6px}
+.bal div{flex:1;background:#0d1015;border:1px solid var(--line);border-radius:8px;padding:8px}
+.bal b{display:block;font-size:18px}.bal span{color:var(--mut);font-size:11px}
+pre{background:#0d1015;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12px;color:#b9c2d6;max-height:260px}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:6px;background:#1c2433;color:#9fb3d9;margin-left:6px}
+</style></head><body><div class="wrap">
+<h1>灵石账本 <span class="tag">炼字工坊复刻 · 层1</span></h1>
+<div class="sub">三段余额（daily 过期 / bonus 活动 / permanent 充值）· 每千字双向计价 · 预扣→结算→退款</div>
+<div class="grid">
+  <div class="card">
+    <label>模型（23 个，名字已换皮，name 是真实上游）</label>
+    <select id="model"></select>
+    <label>渠道前缀：<span id="ch"></span></label>
+    <div class="row">
+      <div><label>输入字数</label><input id="in" type="number" value="3000"></div>
+      <div><label>预估输出字数</label><input id="out" type="number" value="5000"></div>
+    </div>
+    <div id="quote" style="margin-top:12px;color:#9fb3d9"></div>
+    <button id="reserve">预扣</button>
+    <button id="commit" class="ghost">结算（实际 4200 字）</button>
+    <button id="refund" class="ghost">退款</button>
+  </div>
+  <div class="card">
+    <label>账户 <input id="uid" value="demo" style="margin-top:4px"></label>
+    <div class="bal">
+      <div><b id="bd">-</b><span>daily</span></div>
+      <div><b id="bb">-</b><span>bonus</span></div>
+      <div><b id="bp">-</b><span>permanent</span></div>
+    </div>
+    <label style="margin-top:14px">输出</label>
+    <pre id="log">就绪</pre>
+  </div>
+</div></div>
+<script>
+const $ = s => document.querySelector(s);
+const log = (t, o) => { $("#log").textContent = t + (o ? "\n" + JSON.stringify(o, null, 2) : ""); };
+let models = [], usage = null;
+async function j(url, opt) { const r = await fetch(url, opt); const d = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(d.message || d.error || r.status), { data: d }); return d; }
+async function boot() {
+  const d = await j("/api/ling/models");
+  models = d.models;
+  $("#model").innerHTML = models.map(m => '<option value="' + m.name + '">' + m.displayName + "  ·  " + m.name + "  ·  " + m.inputLingPerKChar + "/" + m.outputLingPerKChar + "</option>").join("");
+  $("#model").value = "gemini-4-carbon-high";
+  await quote(); await bal();
+}
+async function quote() {
+  const d = await j("/api/ling/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: $("#model").value, in_chars: +$("#in").value, out_chars: +$("#out").value }) });
+  $("#quote").textContent = "入 " + d.in_ling + " + 出 " + d.out_ling + " = " + d.total + " 灵石（" + d.in_price + "/" + d.out_price + " 每千字）";
+  $("#ch").textContent = d.known ? "已识别" : "未知模型（回落价）";
+}
+async function bal() {
+  const d = await j("/api/ling/balance?uid=" + encodeURIComponent($("#uid").value));
+  $("#bd").textContent = d.daily; $("#bb").textContent = d.bonus; $("#bp").textContent = d.permanent;
+}
+$("#model").onchange = $("#in").oninput = $("#out").oninput = () => quote().catch(e => log("报价失败", e.data || e.message));
+$("#uid").onchange = () => bal().catch(e => log("余额失败", e.data || e.message));
+$("#reserve").onclick = async () => {
+  try {
+    usage = await j("/api/ling/reserve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: $("#uid").value, model: $("#model").value, in_chars: +$("#in").value, out_chars_est: +$("#out").value }) });
+    log("预扣成功 " + usage.total + " 灵石", usage); await bal();
+  } catch (e) { log("预扣失败：" + e.message, e.data); }
+};
+$("#commit").onclick = async () => {
+  if (!usage) return log("先预扣");
+  try { const d = await j("/api/ling/commit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usage_id: usage.usage_id, out_chars: 4200 }) }); log("结算完成", d); usage = null; await bal(); }
+  catch (e) { log("结算失败：" + e.message, e.data); }
+};
+$("#refund").onclick = async () => {
+  if (!usage) return log("先预扣");
+  try { const d = await j("/api/ling/refund", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usage_id: usage.usage_id }) }); log("已退款", d); usage = null; await bal(); }
+  catch (e) { log("退款失败：" + e.message, e.data); }
+};
+boot().catch(e => log("初始化失败", e.message));
+</script></body></html>

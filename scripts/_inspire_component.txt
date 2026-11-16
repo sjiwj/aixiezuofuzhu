@@ -1,0 +1,72 @@
+		/* 灵感展开：照 Laper 的 expand 抄 —— 一句话进，两个变体出，选一个插进正文 */
+		function InspireBox(props) {
+			const [open, setOpen] = useState(false);
+			const [seed, setSeed] = useState("");
+			const [hint, setHint] = useState("");
+			const [busy, setBusy] = useState(false);
+			const [variants, setVariants] = useState([]);
+			const [err, setErr] = useState("");
+			const onTake = props && props.onTake;
+
+			const run = useCallback(async function () {
+				const text = String(seed || "").trim();
+				if (!text) { setErr("先写一句你想展开的话"); return; }
+				const info = props && props.chapterInfo;
+				if (!info || !info.book) { setErr("先选一本书"); return; }
+				setBusy(true); setErr(""); setVariants([]);
+				try {
+					const url = apiBase().replace(/\/+$/, "") + "/api/inspire";
+					const r = await streamSSE(url, {
+						book: info.book, chapter: info.key || "001",
+						seed: text, hint: String(hint || "").trim(), variants: 2
+					}, function (ev) {
+						const t = String(ev.type || "");
+						if (t === "variant") {
+							setVariants(function (prev) { return prev.concat([{ index: ev.index, text: ev.text, cny: ev.cny }]); });
+						}
+						if (t === "error") setErr(String(ev.message || "生成失败"));
+					}, null);
+					if (!r.ok) setErr(r.error || "生成失败");
+				} catch (e) {
+					setErr("出错：" + String((e && e.message) || e));
+				}
+				setBusy(false);
+			}, [seed, hint, props]);
+
+			const head = h("div", { className: "nvl-setrow", style: { padding: "6px 0" } },
+				h("div", { className: "nvl-setrow__text" },
+					h("div", { className: "nvl-setrow__title" }, "灵感展开"),
+					h("div", { className: "nvl-setrow__desc" }, "想到一句话，展开成正文片段；出两个方向让你挑")),
+				h("button", { className: "nvl-btn", onClick: function () { setOpen(!open); } }, open ? "收起" : "打开"));
+
+			if (!open) return head;
+
+			return h("div", null, head,
+				h("div", { style: { display: "flex", flexDirection: "column", gap: "6px", padding: "8px 0" } },
+					h("textarea", {
+						value: seed, rows: 2,
+						placeholder: "例：老头说「过了就是过了」",
+						onChange: function (e) { setSeed(e.target.value); },
+						style: { width: "100%", resize: "vertical", padding: "8px", borderRadius: "6px", border: "1px solid var(--nvl-rule)", background: "var(--nvl-paper-2)", color: "var(--nvl-ink)", fontFamily: "inherit", fontSize: "13px" }
+					}),
+					h("input", {
+						value: hint, placeholder: "方向（可不填）：往恐怖写 / 写成对话 / 要个钩子",
+						onChange: function (e) { setHint(e.target.value); },
+						style: { width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--nvl-rule)", background: "var(--nvl-paper-2)", color: "var(--nvl-ink)", fontFamily: "inherit", fontSize: "12px" }
+					}),
+					h("div", { style: { display: "flex", gap: "8px", alignItems: "center" } },
+						h("button", { className: "nvl-btn nvl-btn--primary", onClick: run, disabled: busy },
+							busy ? "展开中…" : "展开成正文"),
+						err ? h("span", { style: { color: "var(--nvl-err)", fontSize: "12px" } }, err) : null)),
+				variants.length ? h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } },
+					variants.map(function (v) {
+						return h("div", { key: v.index, style: { border: "1px solid var(--nvl-rule)", borderRadius: "8px", padding: "10px", background: "var(--nvl-paper-2)" } },
+							h("div", { style: { fontSize: "11px", color: "var(--nvl-ink-3)", marginBottom: "6px" } },
+								"方案 " + v.index + (v.cny ? " · ¥" + Number(v.cny).toFixed(4) : "")),
+							h("div", { style: { whiteSpace: "pre-wrap", fontSize: "13px", lineHeight: 1.7 } }, String(v.text || "")),
+							h("div", { style: { marginTop: "8px", display: "flex", gap: "8px" } },
+								h("button", { className: "nvl-btn", onClick: function () { if (onTake) onTake(String(v.text || "")); } }, "采用"),
+								h("button", { className: "nvl-btn", onClick: function () { setVariants(variants.filter(function (x) { return x.index !== v.index; })); } }, "丢掉")));
+					})) : null);
+		}
+

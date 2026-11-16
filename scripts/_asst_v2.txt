@@ -1,0 +1,198 @@
+		/* 写作助手挂件：右下角浮动面板。
+		   功能对齐宿主的对话区：模型选择、书籍选择、新建对话、清空、发送。
+		   走 /api/assistant（轻量对话，带账本上下文，不带工具循环）。 */
+		function installAssistant() {
+			if (typeof document === "undefined") return;
+			if (document.querySelector(".nvl-asst")) return;
+
+			const root = document.createElement("div");
+			root.className = "nvl-asst";
+			document.body.appendChild(root);
+
+			let open = false;
+			let busy = false;
+			let msgsData = [];      // [{role, text}]
+			let model = "deepseek-flash";
+
+			const fab = document.createElement("button");
+			fab.className = "nvl-asst__fab";
+			fab.title = "写作助手";
+			fab.textContent = "\u2726";
+
+			const panel = document.createElement("div");
+			panel.className = "nvl-asst__panel";
+			panel.style.display = "none";
+
+			/* 头部：标题 + 工具按钮 */
+			const head = document.createElement("div");
+			head.className = "nvl-asst__head";
+			const title = document.createElement("span");
+			title.className = "nvl-asst__title";
+			title.textContent = "\u2726 写作助手";
+			const toolsRow = document.createElement("span");
+			toolsRow.className = "nvl-asst__tools";
+			const btnNew = document.createElement("button");
+			btnNew.className = "nvl-asst__tool";
+			btnNew.title = "新建对话";
+			btnNew.textContent = "\uFF0B";
+			const btnClear = document.createElement("button");
+			btnClear.className = "nvl-asst__tool";
+			btnClear.title = "清空记录";
+			btnClear.textContent = "\u232B";
+			const btnFold = document.createElement("button");
+			btnFold.className = "nvl-asst__tool";
+			btnFold.title = "收起";
+			btnFold.textContent = "\u2014";
+			toolsRow.appendChild(btnNew);
+			toolsRow.appendChild(btnClear);
+			toolsRow.appendChild(btnFold);
+			head.appendChild(title);
+			head.appendChild(toolsRow);
+
+			/* 消息区 */
+			const msgs = document.createElement("div");
+			msgs.className = "nvl-asst__msgs";
+
+			/* 底部：书 + 模型 + 输入 */
+			const dock = document.createElement("div");
+			dock.className = "nvl-asst__dock";
+
+			const picks = document.createElement("div");
+			picks.className = "nvl-asst__picks";
+			const bookSel = document.createElement("button");
+			bookSel.className = "nvl-asst__pick";
+			const modelSel = document.createElement("select");
+			modelSel.className = "nvl-asst__pick nvl-asst__pick--sel";
+			[["deepseek-flash", "DeepSeek Flash"], ["deepseek-pro", "DeepSeek Pro"], ["kimi-k3", "Kimi K3"]]
+				.forEach(function (m) {
+					const o = document.createElement("option");
+					o.value = m[0]; o.textContent = m[1];
+					modelSel.appendChild(o);
+				});
+			picks.appendChild(bookSel);
+			picks.appendChild(modelSel);
+
+			const inputRow = document.createElement("div");
+			inputRow.className = "nvl-asst__input";
+			const input = document.createElement("textarea");
+			input.className = "nvl-asst__input-ta";
+			input.rows = 1;
+			input.placeholder = "问点什么：这段节奏怎么样 / 那条伏笔该怎么收";
+			const sendBtn = document.createElement("button");
+			sendBtn.className = "nvl-asst__send";
+			sendBtn.textContent = "\u2191";
+			inputRow.appendChild(input);
+			inputRow.appendChild(sendBtn);
+
+			dock.appendChild(picks);
+			dock.appendChild(inputRow);
+
+			panel.appendChild(head);
+			panel.appendChild(msgs);
+			panel.appendChild(dock);
+
+			function currentBook() {
+				try {
+					const m = (localStorage.getItem(LS_LAST_FILE) || "").match(/^projects\/([^\/]+)\//);
+					return m ? decodeURIComponent(m[1]) : "";
+				} catch (e) { return ""; }
+			}
+
+			function refreshBookLabel() {
+				const b = currentBook();
+				bookSel.textContent = "\uD83D\uDCD6 " + (b || "未选书");
+				bookSel.title = b ? ("当前书：" + b) : "先从「项目」里选一本书";
+			}
+
+			function addMsg(role, text) {
+				const d = document.createElement("div");
+				d.className = "nvl-asst__msg nvl-asst__msg--" + role;
+				d.textContent = text;
+				msgs.appendChild(d);
+				msgs.scrollTop = msgs.scrollHeight;
+				return d;
+			}
+
+			function welcome() {
+				addMsg("ai", "我是这本书的助手。可以问节奏、伏笔、账目，或者让我看某一章的问题。");
+			}
+
+			function setOpen(v) {
+				open = v;
+				panel.style.display = v ? "flex" : "none";
+				fab.style.display = v ? "none" : "flex";
+				if (v) {
+					refreshBookLabel();
+					if (!msgsData.length) welcome();
+					try { input.focus(); } catch (e) { /* ignore */ }
+				}
+			}
+
+			function send() {
+				const text = String(input.value || "").trim();
+				if (!text || busy) return;
+				input.value = "";
+				addMsg("me", text);
+				msgsData.push({ role: "user", text: text });
+				busy = true;
+				sendBtn.disabled = true;
+				const thinking = addMsg("ai", "\u2026");
+				const book = currentBook();
+				nvlToken().then(function (tk) {
+					return fetch(apiBase().replace(/\/+$/, "") + "/api/assistant", {
+						method: "POST",
+						headers: Object.assign({ "Content-Type": "application/json" },
+							tk ? { "X-Novelapp-Token": tk } : {}),
+						body: JSON.stringify({ book: book, message: text, model: model })
+					});
+				}).then(function (r) { return r.text(); }).then(function (raw) {
+					thinking.remove();
+					let data = null;
+					try {
+						const parts2 = raw.split("\n\n").filter(function (s) { return s.indexOf("data: ") === 0; });
+						for (let i2 = parts2.length - 1; i2 >= 0; i2--) {
+							try {
+								const ev2 = JSON.parse(parts2[i2].replace(/^data: /, ""));
+								if (ev2 && (ev2.type === "done" || ev2.type === "error")) { data = ev2; break; }
+							} catch (e3) { /* skip */ }
+						}
+					} catch (e2) { /* ignore */ }
+					if (data && (data.type === "done" || data.text) && data.text) {
+						addMsg("ai", data.text);
+						msgsData.push({ role: "ai", text: data.text });
+					} else if (data && data.error) {
+						addMsg("ai", "出错了：" + data.error);
+					} else {
+						addMsg("ai", "（无回应）");
+					}
+					busy = false;
+					sendBtn.disabled = false;
+				}).catch(function (e) {
+					thinking.remove();
+					addMsg("ai", "网络错误：" + ((e && e.message) || e));
+					busy = false;
+					sendBtn.disabled = false;
+				});
+			}
+
+			btnNew.onclick = function () {
+				msgsData = [];
+				msgs.textContent = "";
+				welcome();
+			};
+			btnClear.onclick = function () {
+				msgsData = [];
+				msgs.textContent = "";
+			};
+			btnFold.onclick = function () { setOpen(false); };
+			modelSel.onchange = function () { model = modelSel.value; };
+			sendBtn.onclick = send;
+			input.addEventListener("keydown", function (e) {
+				if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+			});
+			fab.onclick = function () { setOpen(true); };
+
+			root.appendChild(fab);
+			root.appendChild(panel);
+		}
+		try { installAssistant(); } catch (e) { /* 助手挂载失败不影响主流程 */ }

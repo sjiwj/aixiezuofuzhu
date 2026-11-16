@@ -1,0 +1,12 @@
+const list = await (await fetch('http://127.0.0.1:9650/json/list')).json()
+const page = list.find((t) => t.type === 'page')
+const ws = new WebSocket(page.webSocketDebuggerUrl)
+let id = 0; const pending = new Map()
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) } })
+await new Promise((r) => ws.addEventListener('open', r))
+const call = (method, params) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params: params || {} })) })
+await call('Runtime.enable')
+const ev = async (x) => { const r = await call('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true }); if (r.result && r.result.exceptionDetails) return 'ERR'; return r.result && r.result.result && r.result.result.value }
+// 找 aria-label 含「项目」的按钮，看它的容器
+console.log(JSON.stringify(await ev('(function(){var bs=[].slice.call(document.querySelectorAll("button[aria-label]"));var out=[];bs.forEach(function(b){var al=b.getAttribute("aria-label")||"";if(al.indexOf("\u9879\u76ee")>=0){var p=b.parentElement;var gp=p?p.parentElement:null;out.push({label:al.slice(0,20),btnCls:String(b.className||"").slice(0,30),parentCls:p?String(p.className||"").slice(0,36):"",gpCls:gp?String(gp.className||"").slice(0,36):"",gpTag:gp?gp.tagName.toLowerCase():""})}});return out})()'), null, 1))
+ws.close(); process.exit(0)

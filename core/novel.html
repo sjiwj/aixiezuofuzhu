@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小说工作台 · 炼字复刻</title>
+<style>
+:root{--bg:#f2f5f4;--card:#fff;--line:#e4eae7;--fg:#1c2b26;--mut:#6b7d76;--green:#0f7b57;--green2:#14a06d;--soft:#e9f5f0;--warn:#c47b16;--red:#d4453d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;height:100vh;overflow:hidden}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--fg);padding:6px 10px}
+button.p{background:var(--green);border-color:var(--green);color:#fff}
+button.g{background:var(--soft);border-color:#cfe9de;color:var(--green)}
+button:disabled{opacity:.5;cursor:default}
+.top{height:54px;display:flex;align-items:center;gap:14px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line)}
+.logo{font-weight:700;color:var(--green);letter-spacing:.5px}
+.tabs{display:flex;gap:4px;margin-left:12px}
+.tab{padding:6px 12px;border-radius:8px;color:var(--mut);cursor:pointer;font-size:13px}
+.tab.on{background:var(--green);color:#fff}
+.spacer{flex:1}
+.coin{display:flex;align-items:center;gap:6px;font-weight:600;color:#b8860b;background:#fff8e6;border:1px solid #f3e2b3;border-radius:9px;padding:4px 10px;font-size:13px}
+.main{display:grid;grid-template-columns:230px 1fr 320px;height:calc(100vh - 54px)}
+.left{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.left .hd{height:42px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mut)}
+.tree{overflow:auto;flex:1;padding:8px}
+.vol{font-size:12px;color:var(--mut);padding:6px 8px;display:flex;justify-content:space-between}
+.ch{padding:7px 9px;border-radius:8px;font-size:13px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.ch:hover{background:#f4f8f6}.ch.on{background:var(--soft);color:var(--green);font-weight:600}
+.ch .n{margin-left:auto;font-size:11px;color:#9aaba4}
+.center{display:flex;flex-direction:column;min-height:0;background:#fff}
+.ribbon{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line);background:#fbfdfc}
+.rbtn{background:var(--green);border-color:var(--green);color:#fff;font-size:13px;padding:6px 11px;display:flex;align-items:center;gap:5px}
+.rbtn.alt{background:#fff;color:var(--green);border-color:#cfe9de}
+.rbtn .tag{font-size:10px;background:#ffd9d3;color:#a3342b;border-radius:5px;padding:0 4px}
+.chapbar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.chapbar input[type=text]{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit}
+.chapbar select{width:110px}
+.editools{display:flex;gap:12px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--mut);font-size:12.5px;flex-wrap:wrap}
+.editools span{cursor:pointer}.editools span:hover{color:var(--green)}
+textarea{flex:1;border:0;outline:0;resize:none;padding:20px 26px;font:15px/2 -apple-system,"Segoe UI","Microsoft YaHei",serif;background:#fff}
+.bottom{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+.right{background:#fbfdfc;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.right .hd{height:42px;display:flex;align-items:center;padding:0 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mut)}
+.out{flex:1;overflow:auto;padding:12px;font-size:12.5px;white-space:pre-wrap;color:#42544d}
+.panel{padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+select,input{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;background:#fff}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.ball{position:fixed;right:338px;bottom:86px;width:46px;height:46px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 8px 24px #0f7b5733;cursor:pointer}
+.modal{position:fixed;inset:0;background:#0b1a1466;display:none;align-items:center;justify-content:center;z-index:20}
+.modal.on{display:flex}
+.sheet{background:#fff;border-radius:16px;width:min(1060px,94vw);max-height:90vh;overflow:auto;box-shadow:0 20px 60px #0b1a1433}
+.sheet .hd{display:flex;align-items:center;gap:10px;padding:18px 22px;border-bottom:1px solid var(--line)}
+.sheet .bd{padding:18px 22px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{border:1px solid var(--line);border-radius:14px;padding:16px;position:relative}
+.card h3{margin:0 0 6px;font-size:15px}.card p{margin:0 0 10px;color:var(--mut);font-size:12.5px}
+.card .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{font-size:11.5px;background:#f3f7f5;color:#4d635b;border-radius:6px;padding:2px 7px}
+.card .go{position:absolute;right:14px;bottom:12px;color:var(--green);font-weight:600;cursor:pointer}
+.card.c1{border-color:#cdeade;background:#f6fcf9}
+.card.c2{border-color:#e2e6f5;background:#fafbff}
+.card.c3{border-color:#f6e6c9;background:#fffdf7}
+.card.c4{border-color:#f3d9c4;background:#fffaf4}
+.progress{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:12px}
+.bar{width:120px;height:6px;background:#e9efec;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--green);width:10%}
+.pitch{background:#f6fbf8;border:1px solid #d7ece2;border-radius:10px;padding:12px;margin-top:12px;font-size:13px}
+.k{font-size:12px;color:var(--mut)}
+pre{background:#f7faf8;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;max-height:320px;overflow:auto}
+</style></head><body>
+
+<div class="top">
+  <div class="logo">炼字复刻</div>
+  <select id="projSel" style="max-width:220px"></select>
+  <div class="tabs">
+    <div class="tab" data-t="work">作品</div>
+    <div class="tab on" data-t="dir">目录</div>
+    <div class="tab" data-t="set">设定</div>
+    <div class="tab" data-t="out">大纲</div>
+    <div class="tab" data-t="note">笔记</div>
+  </div>
+  <div class="spacer"></div>
+  <button id="undoBtn" title="撤销">↶</button><button id="redoBtn" title="重做">↷</button>
+  <div class="coin">余额 <span id="coin">¥</span></div>
+  <button class="g" id="wizardBtn">灵感</button>
+  <button id="historyBtn">历史</button>
+</div>
+
+<div class="main">
+  <aside class="left">
+    <div class="hd">目录 <span id="chapCount" style="margin-left:auto"></span></div>
+    <div class="tree" id="tree"></div>
+    <div class="hd"><button class="g" id="addVol" style="font-size:12px">+ 卷</button><button class="g" id="addCh" style="font-size:12px">+ 章</button></div>
+  </aside>
+
+  <section class="center">
+    <div class="ribbon" id="ribbon"></div>
+    <div class="chapbar">
+      <span class="k" id="chIndex">第 1 章</span>
+      <select id="volSel"></select>
+      <input id="chTitle" type="text" placeholder="输入章节标题">
+      <button class="g" id="optTitle">优化标题</button>
+    </div>
+    <div class="editools">
+      <span id="copyTitle">复制标题</span><span id="copyBody">复制正文</span>
+      <span id="fmtBtn">智能排版</span><span id="ttsBtn">听书</span><span id="hfBtn">高频词</span>
+      <span id="previewBtn">手机预览</span><span id="repBtn">替换</span><span id="histBtn">历史</span><span id="clearBtn">清空</span>
+      <span style="margin-left:auto" id="saveHint">未修改</span>
+    </div>
+    <textarea id="content" placeholder="开始撰写本章内容…"></textarea>
+    <div class="bottom">
+      <button id="exportBtn">导出章节</button>
+      <button class="p" id="publishBtn">一键发布</button>
+      <div class="spacer"></div>
+      <button id="prevCh">上一章</button><button id="dirBtn">目录</button><button id="nextCh">下一章</button>
+    </div>
+  </section>
+
+  <aside class="right">
+    <div class="hd">AI 面板 <span style="margin-left:auto;font-size:11px">哈基米 3.8 正式版</span></div>
+    <div class="out" id="out">选一个工具开始。生成类会先给预估成本。</div>
+    <div class="panel">
+      <div class="row"><span class="k">模型</span><select id="model" style="flex:1"></select></div>
+      <div class="row">
+        <div><span class="k">章数</span><input id="nCh" type="number" value="2" min="1" max="5" style="width:100%"></div>
+        <div><span class="k">每章字数</span><input id="nWords" type="number" value="1200" min="200" max="8000" style="width:100%"></div>
+      </div>
+      <div class="k">生成前先预览，再决定要不要写</div>
+      <button class="p" id="genBtn">开始续写</button>
+    </div>
+  </aside>
+</div>
+
+<div class="ball" id="ball">AI</div>
+
+<div class="modal" id="wizard">
+  <div class="sheet">
+    <div class="hd"><b style="font-size:17px">✨ 创作向导</b>
+      <span class="k" id="wizCrumb">准备立项（可选）</span>
+      <div class="spacer"></div>
+      <div class="progress">整体进度 <div class="bar"><i id="wizBar" style="width:10%"></i></div> <span id="wizPct">10%</span></div>
+      <button class="g" id="wizClose">关闭</button>
+    </div>
+    <div class="bd" id="wizBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="genModal">
+  <div class="sheet" style="width:min(560px,94vw)">
+    <div class="hd"><b id="genTitle">黄金开篇</b><div class="spacer"></div><span class="k">本步产物可编辑</span></div>
+    <div class="bd">
+      <div class="row"><div><div class="k">一次生成</div><input id="gCh" type="number" value="2" min="1" max="5" style="width:100%"></div>
+        <div><div class="k">每章字数</div><input id="gWords" type="number" value="1200" min="200" max="8000" style="width:100%"></div></div>
+      <div style="margin-top:10px"><div class="k">提示词</div><select id="gPrompt" style="width:100%"></select></div>
+      <div style="margin-top:10px"><div class="k">补充信息（可选）</div><input id="gExtra" placeholder="如：第一章要出现退单冲突" style="width:100%"></div>
+      <div style="margin-top:14px;display:flex;gap:8px"><button class="p" id="gRun">开始生成</button><button class="g" id="gCancel">取消</button></div>
+      <pre id="gLog" style="margin-top:12px">就绪</pre>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="toolModal">
+  <div class="sheet" style="width:min(520px,94vw)">
+    <div class="hd"><b id="toolTitle">工具</b><div class="spacer"></div><button class="g" id="toolClose">关闭</button></div>
+    <div class="bd" id="toolBody"></div>
+  </div>
+</div>
+
+<script>
+var $ = function(s){ return document.querySelector(s); };
+var S = { pid:null, pj:null, cid:null, tools:{}, prompts:[], dirty:false };
+function api(url, opt){ return fetch(url, opt).then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok) throw new Error(d.message||d.error||r.status); return d; }); }); }
+function post(url, body){ return api(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})}); }
+function patch(url, body){ return api(url,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})}); }
+function out(t){ $("#out").textContent = t; }
+function money(n){ $("#coin").textContent = n; }
+
+function renderProjects(){
+  var box = $("#projSel"); if(!box) return;
+  box.innerHTML = (S.projects||[]).map(function(p){ return '<option value="'+p.id+'">'+p.title+' · '+p.chapters+'章</option>'; }).join("");
+  if(S.pid) box.value = S.pid;
+}
+
+function loadList(){ return api("/api/novel/projects").then(function(d){
+  if(!d.projects.length){ return post("/api/novel/projects",{title:"都市：从退单开始",channel:"男频",genre:"都市",idea:"主角被合伙人踢出公司，靠旧账本反杀",protagonist:"陈默"}).then(function(pj){ return loadProject(pj.id); }); }
+  return loadProject(d.projects[0].id);
+}); }
+
+function loadProject(pid){
+  return api("/api/novel/projects/"+pid).then(function(pj){
+    S.pid = pid; S.pj = pj;
+    api("/api/novel/projects").then(function(d){ S.projects = d.projects; renderProjects(); }).catch(function(){});
+    $("#volSel").innerHTML = pj.volumes.map(function(v){ return "<option value='"+v.id+"'>"+v.title+"</option>"; }).join("");
+    renderTree();
+    if(pj.chapters.length) selectChapter(pj.chapters[pj.chapters.length-1].id); else clearEditor();
+    return pj;
+  });
+}
+function renderTree(){
+  var pj = S.pj, box = $("#tree"); box.innerHTML = "";
+  $("#chapCount").textContent = pj.chapters.length + " 章 · " + pj.chapters.reduce(function(a,c){return a+(c.words||0);},0) + " 字";
+  pj.volumes.forEach(function(v){
+    var d = document.createElement("div"); d.className="vol"; d.innerHTML="<span>"+v.title+"</span><span>"+(pj.chapters.filter(function(c){return c.volumeId===v.id;}).length)+"</span>"; box.appendChild(d);
+    pj.chapters.filter(function(c){return c.volumeId===v.id;}).forEach(function(c){
+      var e = document.createElement("div");
+      e.className="ch"+(c.id===S.cid?" on":"");
+      e.innerHTML = "<span>"+c.title+"</span><span class='n'>"+(c.words||0)+"</span>";
+      e.onclick = function(){ selectChapter(c.id); };
+      box.appendChild(e);
+    });
+  });
+}
+function selectChapter(cid){
+  S.cid = cid;
+  var c = S.pj.chapters.filter(function(x){return x.id===cid;})[0];
+  if(!c) return;
+  $("#chTitle").value = c.title; $("#content").value = c.content||"";
+  $("#chIndex").textContent = "第 " + c.index + " 章";
+  $("#volSel").value = c.volumeId; S.dirty=false; $("#saveHint").textContent = c.status==="approved"?"已定稿":"草稿";
+  renderTree();
+}
+function clearEditor(){ S.cid=null; $("#chTitle").value=""; $("#content").value=""; $("#chIndex").textContent="新章"; }
+
+function saveChapter(){
+  if(!S.cid) return Promise.resolve();
+  return patch("/api/novel/chapters/"+S.cid,{title:$("#chTitle").value,content:$("#content").value,volumeId:$("#volSel").value})
+    .then(function(){ return loadProject(S.pid).then(function(){ selectChapter(S.cid); $("#saveHint").textContent="已保存"; }); });
+}
+$("#content").addEventListener("input", function(){ S.dirty=true; $("#saveHint").textContent="未保存（离开自动存）"; });
+$("#chTitle").addEventListener("input", function(){ S.dirty=true; });
+setInterval(function(){ if(S.dirty && S.cid){ S.dirty=false; saveChapter(); } }, 4000);
+
+function renderRibbon(){
+  var order = [["opening","开篇","👑"],["continue","续写","✍"],["optimize","优化","⚡"],["detect","AI率检测","🛡"],["deai","AI消痕","🌿"],["review","审稿","📋"],["polish","润色","✨"],["comment","神评","💬"],["deconstruct","拆书","📖"],["rewrite","重写","🔁"],["inspiration","灵感","💡"],["setting","设定","📎"]];
+  $("#ribbon").innerHTML = order.map(function(x){
+    var tag = x[0]==="detect" ? "<span class='tag'>朱雀</span>" : (x[0]==="deai" ? "<span class='tag'>订阅不限次</span>" : "");
+    var cls = (x[0]==="opening"||x[0]==="continue") ? "rbtn" : "rbtn alt";
+    return "<button class='"+cls+"' data-k='"+x[0]+"'>"+x[2]+" "+x[1]+tag+"</button>";
+  }).join("");
+  $("#ribbon").querySelectorAll("button").forEach(function(b){ b.onclick = function(){ onTool(b.dataset.k); }; });
+}
+
+function onTool(k){
+  if(k==="opening"||k==="continue") return openGen(k);
+  if(k==="inspiration"||k==="setting") return runIdea(k);
+  if(!S.cid) return out("先选一章");
+  out("处理中…");
+  post("/api/novel/chapters/"+S.cid+"/action",{action:k,model:$("#model").value})
+    .then(function(r){ out("【"+r.label+"】\n\n"+r.result); return refreshCoin(); })
+    .catch(function(e){ out("失败："+e.message); });
+}
+function runIdea(kind){
+  out("生成建议中…");
+  post("/api/novel/chapters/"+(S.cid||"0")+"/action",{action:kind,model:$("#model").value})
+    .catch(function(){ return null; })
+    .then(function(){
+      var body = { action: kind, model: $("#model").value };
+      return fetch("/api/novel/chapters/"+S.cid+"/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();});
+    }).then(function(r){ if(r && r.result) out(r.result); else out("先选一章，或直接开新章后再点"+kind); }).catch(function(e){ out("失败："+e.message); });
+}
+
+function openGen(kind){
+  $("#genTitle").textContent = kind==="opening" ? "黄金开篇 审批" : "续写 审批";
+  $("#gCh").value = kind==="opening" ? 3 : 1;
+  $("#gPrompt").value = kind==="opening" ? "official-opening" : "official-continue";
+  $("#genModal").classList.add("on");
+  estGen(kind);
+  $("#gRun").onclick = function(){ doGen(kind); };
+}
+$("#gCancel").onclick = function(){ $("#genModal").classList.remove("on"); };
+["#gCh","#gWords"].forEach(function(s){ document.querySelector(s).oninput = function(){ estGen($("#genTitle").textContent.indexOf("开篇")>=0?"opening":"continue"); }; });
+function estGen(kind){
+  return post("/api/novel/projects/"+S.pid+"/estimate",{kind:kind,chapters:+$("#gCh").value,words:+$("#gWords").value,model:$("#model").value})
+    .then(function(q){ $("#genCost").textContent = q.total; $("#est").textContent = q.total; return q; });
+}
+function doGen(kind){
+  $("#gRun").disabled = true; $("#gLog").textContent = "生成中…";
+  post("/api/novel/projects/"+S.pid+"/generate",{kind:kind,chapters:+$("#gCh").value,words:+$("#gWords").value,
+    model:$("#model").value,prompt_id:$("#gPrompt").value,uid:"local"})
+    .then(function(r){
+      $("#gLog").textContent = "完成：预估 "+r.estimate+"，实扣 "+r.charged+"，退回 "+r.refunded+"\n" + r.produced.map(function(p){ return "第"+p.index+"章 "+p.words+" 字 · "+p.status; }).join("\n");
+      return loadProject(S.pid).then(function(){ return refreshCoin(); });
+    }).catch(function(e){ $("#gLog").textContent = "失败："+e.message; })
+    .then(function(){ $("#gRun").disabled = false; });
+}
+
+// ============ 创作向导（四模式 · 分步） ============
+var WIZ = { cfg: null, mode: null, step: 1, data: {}, book: null };
+function wizOpenCards(){
+  WIZ.mode = null; WIZ.step = 1; WIZ.data = {}; WIZ.book = null;
+  $("#wizCrumb").textContent = "准备立项（可选）";
+  $("#wizBar").style.width = "10%"; $("#wizPct").textContent = "10%";
+  $("#wizBody").innerHTML =
+    '<div class="row" style="align-items:center;margin-bottom:14px">' +
+      '<div><div class="k">目标字数（万字）</div><div style="font-size:12px;color:var(--mut)">默认 100（=100 万字），最大 10000（=1 亿字），超出自动恢复 100</div></div>' +
+      '<input id="wizGoal" type="number" value="100" style="max-width:120px">' +
+    '</div>' +
+    '<div class="cards">' +
+      card("灵感火花", "先选频道与赛道，再进行世界观/人设/金手指抽卡，最终生成小说立项书",
+           ["男频/女频定调","赛道细分","生成立项书"], "游戏抽卡 · 自由组合", "spark", "c1") +
+      card("仿写立项 · 经典", "上传 TXT / 选择爆款参考书 → 分析前 10 章 → 生成立项书",
+           ["上传 TXT","排行榜搜索","生成立项书"], "自动提取前 10 章", "imitate", "c2") +
+      card("智能导入立项", "我有完整想法，帮我一键整理成立项书",
+           ["粘贴原始信息","自动补全缺失","一键写入创作台"], "输入你的创作灵感吧", "import", "c3") +
+      card("熔炉仿写", "选择 1-3 本参考书 → 九维度深度分析 → 自选融合配方 → 生成立项书",
+           ["单本仿写","多源融合","九维度分析"], "排行榜搜索 / 粘贴正文 / 上传", "furnace", "c4") +
+    '</div><div id="wizResult"></div>';
+  document.querySelectorAll("#wizBody .go").forEach(function(g){ g.onclick = function(){ wizStart(g.dataset.mode); }; });
+}
+function card(title, desc, chips, foot, mode, cls){
+  return '<div class="card '+cls+'"><h3>'+title+'</h3><p>'+desc+'</p>' +
+    '<div class="chips">'+chips.map(function(c){return '<span class="chip">'+c+'</span>';}).join("")+'</div>' +
+    '<div class="k">'+foot+'</div><div class="go" data-mode="'+mode+'">开始 →</div></div>';
+}
+function wizHeader(text, step){
+  WIZ.step = step;
+  $("#wizCrumb").textContent = text;
+  var pct = step === 1 ? 30 : (step === 2 ? 65 : 95);
+  $("#wizBar").style.width = pct + "%"; $("#wizPct").textContent = pct + "%";
+}
+
+function wizStart(mode){
+  WIZ.mode = mode; WIZ.data = {}; WIZ.book = null;
+  if(mode === "spark") return wizProtoStart();
+  if(mode === "imitate") return wizImitate1();
+  if(mode === "import") return wizImport1();
+  return wizFurnace1();
+}
+
+// —— 灵感火花（协议级：/api/novel/wizard/step） ——
+var PROTO = { state: { channel: "男频", genre: "都市脑洞", selections: {} }, last: null };
+
+function wizProtoStart(){
+  PROTO.state = { channel: "男频", genre: "都市脑洞", selections: {} };
+  wizHeader("01 选频道与赛道", 1);
+  var ch = WIZ.cfg.channels;
+  var html = '<div class="k">频道</div><div class="chips" id="chTabs">' +
+    Object.keys(ch).map(function(k,i){ return '<button class="chip" data-ch="'+k+'" style="'+(i===0?'background:#0f7b57;color:#fff':'')+'">'+k+'</button>'; }).join("") +
+    '</div><div class="k" style="margin-top:12px">赛道细分</div><div class="chips" id="genreBox"></div>' +
+    '<div style="margin-top:16px"><button class="p" id="sparkNext">开始抽卡：世界观定制</button></div>';
+  $("#wizBody").innerHTML = html;
+  function paint(channel){
+    $("#genreBox").innerHTML = (ch[channel]||[]).map(function(g){ return '<button class="chip" data-g="'+g[0]+'">'+g[0]+'</button>'; }).join("");
+    $("#genreBox").querySelectorAll("button").forEach(function(btn){ btn.onclick = function(){
+      $("#genreBox").querySelectorAll("button").forEach(function(x){x.style.background="#f3f7f5";x.style.color="#4d635b";});
+      btn.style.background="#0f7b57"; btn.style.color="#fff"; PROTO.state.genre = btn.dataset.g;
+    };});
+  }
+  $("#chTabs").querySelectorAll("button").forEach(function(btn){ btn.onclick = function(){
+    $("#chTabs").querySelectorAll("button").forEach(function(x){x.style.background="#f3f7f5";x.style.color="#4d635b";});
+    btn.style.background="#0f7b57"; btn.style.color="#fff";
+    PROTO.state.channel = btn.dataset.ch; paint(btn.dataset.ch);
+  };});
+  paint(PROTO.state.channel);
+  $("#sparkNext").onclick = function(){ wizProtoStep("World_Rule_Gen"); };
+}
+
+function wizProtoStep(stepName){
+  wizHeader("抽卡中…", 2);
+  $("#wizBody").innerHTML = '<div class="k">模型生成 9 个候选中…</div><pre id="protoLog">就绪</pre>';
+  post("/api/novel/wizard/step", { currentState: PROTO.state, userAction: "开始 " + (stepName||""),
+        stepName: stepName, model: $("#model").value, uid: "local" })
+    .then(function(r){ PROTO.last = r; renderProto(r); return refreshCoin(); })
+    .catch(function(e){ $("#wizBody").innerHTML = '<pre>失败：' + e.message + '</pre>'; });
+}
+
+function renderProto(r){
+  var s = r.step;
+  if(s.is_final) return renderFinal(s.final_result, r);
+  var pct = s.progress;
+  $("#wizCrumb").textContent = "第 " + (pct/25) + " / 4 步 · " + s.step_name;
+  $("#wizBar").style.width = pct + "%"; $("#wizPct").textContent = pct + "%";
+  var cards = s.options.map(function(o, i){
+    return '<div class="card" data-pick="'+i+'" style="cursor:pointer;padding:12px">' +
+      '<div class="k">'+ (i+1) +' · '+o.angle+'</div>' +
+      '<h3 style="font-size:14px;margin:4px 0 6px">'+o.title+'</h3>' +
+      '<p style="font-size:12.5px;color:#5b6b64;margin:0 0 8px">'+o.description+'</p>' +
+      '<div class="chips">'+o.tags.map(function(t){return '<span class="chip">'+t+'</span>';}).join("")+'</div></div>';
+  }).join("");
+  $("#wizBody").innerHTML =
+    '<div class="pitch" style="margin:0 0 12px"><b>'+s.assistant_message+'</b></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+cards+'</div>' +
+    '<div style="margin-top:12px"><div class="k">不满意？换一批，或直接写你的答案</div>' +
+    '<div style="display:flex;gap:8px;margin-top:6px"><input id="protoCustom" placeholder="自定义答案…" style="flex:1">' +
+    '<button class="g" id="protoSubmit">提交</button><button class="g" id="protoRedraw">换一批</button></div></div>' +
+    '<pre id="protoLog" style="margin-top:10px"></pre>';
+  $("#wizBody").querySelectorAll("[data-pick]").forEach(function(el){
+    el.onclick = function(){
+      var o = s.options[+el.dataset.pick];
+      PROTO.state.selections[s.step_name] = o.payload;
+      if(s.step_name === "World_Rule_Gen") PROTO.state.world = o.payload;
+      if(s.step_name === "Protagonist_Archetype") PROTO.state.protagonist = o.payload;
+      if(s.step_name === "Golden_Finger_Design") PROTO.state.golden_finger = o.payload;
+      wizProtoStep();
+    };
+  });
+  $("#protoRedraw").onclick = function(){ wizProtoStep(s.step_name); };
+  $("#protoSubmit").onclick = function(){
+    var v = ($("#protoCustom").value || "").trim();
+    if(!v) return;
+    PROTO.state.selections[s.step_name] = v;
+    wizProtoStep();
+  };
+}
+
+function renderFinal(fr, r){
+  $("#wizCrumb").textContent = "确认立项书"; $("#wizBar").style.width = "100%"; $("#wizPct").textContent = "100%";
+  var titles = fr.title_candidates.map(function(t, i){
+    return '<label style="display:block;border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin-top:6px;cursor:pointer;font-size:13px">' +
+      '<input type="radio" name="bookTitle" value="'+t+'" '+(i===0?"checked":"")+'> '+t+'</label>';
+  }).join("");
+  $("#wizBody").innerHTML =
+    '<div class="pitch"><b>'+fr.book_title+'</b><div style="margin-top:6px">'+fr.synopsis+'</div></div>' +
+    '<div class="chips" style="margin-top:10px">'+fr.tags.map(function(t){return '<span class="chip">'+t+'</span>';}).join("")+'</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">' +
+      '<div><div class="k">标题九选一</div>'+titles+'</div>' +
+      '<div><div class="k">核心设定</div>' +
+        '<pre style="max-height:300px">主角：'+fr.protagonist+'\n\n金手指：'+fr.golden_finger+'\n\n力量体系：'+fr.power_system+'\n\n核心冲突：'+fr.conflict+'\n\n世界规则：'+fr.world_focus+'\n\n文风：'+fr.style+'</pre></div>' +
+    '</div>' +
+    '<div style="margin-top:14px;display:flex;gap:8px"><button class="p" id="finWrite">写入创作台</button>' +
+    '<button class="g" id="finRestart">重新开始</button></div>' +
+    '<pre style="margin-top:10px"></pre>';
+  $("#finRestart").onclick = wizProtoStart;
+  $("#finWrite").onclick = function(){
+    var sel = document.querySelector('input[name=bookTitle]:checked');
+    var title = sel ? sel.value : fr.book_title;
+    patch("/api/novel/projects/" + S.pid, {
+      title: title, genre: fr.genre, protagonist: fr.protagonist,
+      world: fr.world_focus, golden_finger: fr.golden_finger,
+      idea: fr.synopsis, outline: fr.conflict, tags: fr.tags, style: fr.style
+    }).then(function(){
+      $("#wizard").classList.remove("on");
+      return loadProject(S.pid).then(function(){ out("立项书已写入创作台：" + title); });
+    }).catch(function(e){ out("写入失败：" + e.message); });
+  };
+}
+
+// —— 仿写立项 ——
+function wizImitate1(){
+  wizHeader("01 上传 / 粘贴参考正文", 1);
+  $("#wizBody").innerHTML =
+    '<div class="k">把参考书正文粘进来（支持「第X章」分隔），或用下面的按钮上传 TXT</div>' +
+    '<textarea id="imText" style="width:100%;height:180px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px" placeholder="第一章 …&#10;&#10;……"></textarea>' +
+    '<div style="margin-top:10px;display:flex;gap:8px;align-items:center">' +
+      '<input type="file" id="imFile" accept=".txt" style="display:none">' +
+      '<button class="g" id="imPick">上传 TXT</button>' +
+      '<button class="p" id="imGo">开始分析前 10 章</button>' +
+      '<span class="k" id="imHint">只分析结构，不保存原文</span></div>' +
+    '<pre id="imLog" style="margin-top:12px">就绪</pre>';
+  $("#imPick").onclick = function(){ $("#imFile").click(); };
+  $("#imFile").onchange = function(){
+    var f = $("#imFile").files[0]; if(!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){ $("#imText").value = rd.result; $("#imHint").textContent = f.name + " · " + rd.result.length + " 字"; };
+    rd.readAsText(f, "utf-8");
+  };
+  $("#imGo").onclick = function(){
+    if(!$("#imText").value.trim()) return $("#imLog").textContent = "先粘贴或上传正文";
+    $("#imLog").textContent = "分析中…";
+    post("/api/novel/wizard/imitate", { text: $("#imText").value, model: $("#model").value, uid: "local" })
+      .then(function(r){ WIZ.data.analysis = r; wizImitate2(r); return refreshCoin(); })
+      .catch(function(e){ $("#imLog").textContent = "分析失败：" + e.message; });
+  };
+}
+function wizImitate2(r){
+  wizHeader("02 前 10 章结构分析", 2);
+  var rows = r.features.map(function(f){
+    return '<tr><td>'+f.title+'</td><td>'+f.words+'</td><td>'+f.avg_para+'</td><td>'+f.dialogue_hits+'</td><td>'+f.last+'</td></tr>';
+  }).join("");
+  $("#wizBody").innerHTML =
+    '<div class="row"><div><span class="k">总字数</span><b>'+r.report.total_words+'</b></div>' +
+    '<div><span class="k">平均章字数</span><b>'+r.report.avg_chapter_words+'</b></div>' +
+    '<div><span class="k">对白密度</span><b>'+r.report.dialogue_density+'%</b></div>' +
+    '<div><span class="k">节奏</span><b>'+r.report.rhythm+'</b></div></div>' +
+    '<div class="k" style="margin-top:12px">可复用公式：'+r.report.formula+'</div>' +
+    '<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px"><tr><th align="left">章节</th><th align="left">字数</th><th align="left">段均</th><th align="left">对白</th><th align="left">章末</th></tr>'+rows+'</table>' +
+    '<div style="margin-top:14px;display:flex;gap:8px"><button class="p" id="imBook">生成立项书</button><button class="g" id="imBack">返回</button></div>' +
+    '<pre style="margin-top:10px">'+r.suggestions.join("\n")+'</pre>';
+  $("#imBook").onclick = function(){ wizBook("imitate", { analysis: r }); };
+  $("#imBack").onclick = wizImitate1;
+}
+
+// —— 智能导入 ——
+function wizImport1(){
+  wizHeader("01 粘贴原始信息", 1);
+  $("#wizBody").innerHTML =
+    '<div class="k">写清楚书名、主角、赛道、世界观、金手指，缺的下一步会补</div>' +
+    '<textarea id="ipText" style="width:100%;height:160px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px" placeholder="例：书名《退单》 主角陈默 都市 世界观：账本即规则 金手指：过目不忘"></textarea>' +
+    '<div style="margin-top:10px"><button class="p" id="ipGo">解析字段</button></div><pre id="ipLog" style="margin-top:12px">就绪</pre>';
+  $("#ipGo").onclick = function(){
+    var t = $("#ipText").value.trim(); if(!t) return $("#ipLog").textContent = "先写点东西";
+    post("/api/novel/wizard/parse", { text: t, model: $("#model").value, uid: "local" })
+      .then(function(r){ WIZ.data.parsed = r; wizImport2(r); return refreshCoin(); })
+      .catch(function(e){ $("#ipLog").textContent = "解析失败：" + e.message; });
+  };
+}
+function wizImport2(r){
+  wizHeader("02 补齐缺失字段", 2);
+  var labels = { title:"书名", genre:"赛道", protagonist:"主角", worldview:"世界观", golden:"金手指" };
+  var rows = Object.keys(labels).map(function(k){
+    var v = r.fields[k] || "";
+    var miss = !v;
+    return '<div style="margin-top:8px"><div class="k" style="color:'+(miss?"var(--red)":"var(--mut)")+'">'+labels[k]+(miss?" · 缺失":"" )+'</div>' +
+      '<input data-f="'+k+'" value="'+v.replace(/"/g,"&quot;")+'" style="width:100%"></div>';
+  }).join("");
+  $("#wizBody").innerHTML = rows +
+    '<div style="margin-top:14px;display:flex;gap:8px"><button class="p" id="ipBook">补齐并立项</button><button class="g" id="ipBack">返回</button></div>';
+  $("#ipBook").onclick = function(){
+    var extra = {};
+    document.querySelectorAll("#wizBody input[data-f]").forEach(function(i){ extra[i.dataset.f] = i.value; });
+    WIZ.data.extra = extra;
+    wizBook("import", { extra: extra });
+  };
+  $("#ipBack").onclick = wizImport1;
+}
+
+// —— 熔炉仿写 ——
+function wizFurnace1(){
+  wizHeader("01 选 1-3 本参考书", 1);
+  var boxes = [0,1,2].map(function(i){
+    return '<div style="margin-top:8px"><div class="k">参考 '+(i+1)+(i===0?"（必填）":"（可选）")+'</div>' +
+      '<input id="rfTitle'+i+'" placeholder="标题，如：退单" style="width:100%;margin-bottom:6px">' +
+      '<textarea id="rfText'+i+'" style="width:100%;height:74px;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12.5px" placeholder="粘贴正文或章节摘要"></textarea></div>';
+  }).join("");
+  $("#wizBody").innerHTML = boxes +
+    '<div style="margin-top:12px"><button class="p" id="fuGo">九维度分析</button></div><pre id="fuLog" style="margin-top:10px">就绪</pre>';
+  $("#fuGo").onclick = function(){
+    var refs = [];
+    for(var i=0;i<3;i++){
+      var t = $("#rfText"+i).value.trim(); if(!t) continue;
+      refs.push({ title: $("#rfTitle"+i).value.trim() || ("参考"+(i+1)), text: t });
+    }
+    if(!refs.length) return $("#fuLog").textContent = "至少填一本";
+    WIZ.data.refs = refs;
+    post("/api/novel/wizard/furnace", { refs: refs, model: $("#model").value, uid: "local" })
+      .then(function(r){ WIZ.data.furnace = r; wizFurnace2(r); return refreshCoin(); })
+      .catch(function(e){ $("#fuLog").textContent = "分析失败：" + e.message; });
+  };
+}
+function wizFurnace2(r){
+  wizHeader("02 九维度评分 / 选融合配方", 2);
+  var bars = r.nine.map(function(d){
+    var w = d.score;
+    return '<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:12px"><span>'+d.label+'</span><span>'+d.score+' · 差异 '+d.spread+'</span></div>' +
+      '<div style="height:8px;background:#eef3f0;border-radius:9px;overflow:hidden"><i style="display:block;height:100%;width:'+w+'%;background:#0f7b57"></i></div></div>';
+  }).join("");
+  var recipes = r.recipes.map(function(x,i){
+    return '<label style="display:block;border:1px solid var(--line);border-radius:9px;padding:8px;margin-top:6px;cursor:pointer">' +
+      '<input type="radio" name="recipe" value="'+x.id+'" '+(x.id===r.suggest?"checked":"")+'> <b>'+x.label+'</b><div class="k">'+x.desc+'</div></label>';
+  }).join("");
+  $("#wizBody").innerHTML = '<div class="row"><div style="flex:1.2">'+bars+'</div><div style="flex:1"><div class="k">综合分 <b style="font-size:20px;color:#0f7b57">'+r.total+'</b></div><div class="k" style="margin-top:8px">融合配方</div>'+recipes+'</div></div>' +
+    '<div style="margin-top:14px;display:flex;gap:8px"><button class="p" id="fuBook">按配方立项</button><button class="g" id="fuBack">返回</button></div>';
+  $("#fuBack").onclick = wizFurnace1;
+  $("#fuBook").onclick = function(){
+    var sel = document.querySelector('input[name=recipe]:checked');
+    wizBook("furnace", { recipe: sel ? sel.value : r.suggest, furnace: r });
+  };
+}
+
+// —— 立项书 ——
+function wizBook(mode, extra){
+  wizHeader("03 立项书", 3);
+  $("#wizBody").innerHTML = '<div class="k">生成中…</div>';
+  var payload = { mode: mode, channel: WIZ.data.channel || S.pj.channel, genre: WIZ.data.genre || S.pj.genre,
+                  cards: (mode === "spark") ? (WIZ.data.cards || {}) : {},
+                  extra: (extra && extra.extra) || WIZ.data.extra || {},
+                  word_goal: (($("#wizGoal") && $("#wizGoal").value) || 100) * 10000,
+                  model: $("#model").value, uid: "local" };
+  if(mode === "imitate" && WIZ.data.analysis){
+    payload.genre = (WIZ.data.analysis.reference && WIZ.data.analysis.reference.tags && WIZ.data.analysis.reference.tags[0]) || payload.genre || "都市";
+    payload.extra.title = (WIZ.data.analysis.reference && WIZ.data.analysis.reference.title) || "仿写作品";
+  }
+  if(mode === "furnace" && WIZ.data.refs && WIZ.data.refs[0]) payload.extra.title = "熔炉·" + WIZ.data.refs[0].title;
+  if(mode === "import" && WIZ.data.parsed){ Object.assign(payload.extra, WIZ.data.parsed.fields); }
+  post("/api/novel/projects/" + S.pid + "/book", payload)
+    .then(function(b){
+      WIZ.book = b;
+      $("#wizBody").innerHTML = renderBook(b) +
+        '<div style="margin-top:14px;display:flex;gap:8px"><button class="p" id="bkApply">写入创作台</button>' +
+        '<button class="g" id="bkBack">返回上一步</button></div>';
+      $("#bkBack").onclick = function(){ WIZ.mode = null; wizOpenCards(); };
+      $("#bkApply").onclick = function(){
+        $("#wizard").classList.remove("on");
+        loadProject(S.pid).then(function(){ refreshCoin(); out("立项书已写入：" + b.title + "\n" + b.pitch); });
+      };
+      return refreshCoin();
+    })
+    .catch(function(e){ $("#wizBody").innerHTML = '<pre>立项失败：' + e.message + '</pre>'; });
+}
+function renderBook(b){
+  return '<div class="pitch"><b>《'+b.title+'》</b> '+b.channel+' · '+b.genre+'　<span class="chip">'+b.tags.join('</span><span class="chip">')+'</span>' +
+    '<div style="margin-top:8px">'+b.summary+'</div></div>' +
+    '<div class="chips" style="margin-top:10px"><span class="chip">主角：'+b.hero+'</span><span class="chip">金手指：'+b.golden_finger+'</span></div>' +
+    '<pre style="margin-top:10px">世界观：'+b.worldview+'\n\n主线：'+b.main_line+'\n\n力量体系：'+b.power_system+'\n\n卷：\n' +
+      b.volumes.map(function(v){return '· '+v.title+'（'+v.range+'）'+v.goal;}).join('\n') + '\n\n前 10 章钩子：\n' +
+      b.first10.map(function(f){return f.idx+'. '+f.hook;}).join('\n') + '\n\n提示词变量：\n' + JSON.stringify(b.prompt_context, null, 1) + '</pre>' +
+    '<div class="k"></div>';
+}
+
+$("#projSel").onchange = function(){ loadProject(this.value); };
+$("#wizardBtn").onclick = function(){ $("#wizard").classList.add("on"); if(!WIZ.cfg) loadWizCfg().then(wizOpenCards); else wizOpenCards(); };
+$("#wizClose").onclick = function(){ $("#wizard").classList.remove("on"); };
+function loadWizCfg(){ return api("/api/novel/wizard/config").then(function(c){ WIZ.cfg = c; return c; }); }
+
+$("#fmtBtn").onclick = function(){ if(!S.cid)return; post("/api/novel/chapters/"+S.cid+"/format",{}).then(function(r){ $("#content").value = r.content; out("智能排版完成，"+r.words+" 字"); }); };
+$("#hfBtn").onclick = function(){ if(!S.cid)return; api("/api/novel/chapters/"+S.cid+"/highfreq").then(function(d){ out("高频词：\n"+d.items.map(function(x){return x.word+" × "+x.count;}).join("\n")); }); };
+$("#repBtn").onclick = function(){
+  $("#toolTitle").textContent = "替换";
+  $("#toolBody").innerHTML = "<div class='k'>查找</div><input id='f1' style='width:100%'><div class='k'>替换为</div><input id='f2' style='width:100%'><div style='margin-top:12px'><button class='p' id='doRep'>执行</button></div>";
+  $("#toolModal").classList.add("on");
+  $("#doRep").onclick = function(){ post("/api/novel/chapters/"+S.cid+"/replace",{find:$("#f1").value,repl:$("#f2").value}).then(function(r){ $("#toolModal").classList.remove("on"); loadProject(S.pid).then(function(){ selectChapter(S.cid); out("替换 "+r.replaced+" 处"); }); }); };
+};
+$("#toolClose").onclick = function(){ $("#toolModal").classList.remove("on"); };
+$("#clearBtn").onclick = function(){ if(S.cid){ $("#content").value=""; S.dirty=true; } };
+$("#ttsBtn").onclick = function(){
+  try { var u = new SpeechSynthesisUtterance($("#content").value.slice(0, 400)); u.lang = "zh-CN"; speechSynthesis.speak(u); out("听书中…（浏览器朗读）"); }
+  catch(e){ out("当前环境不支持朗读"); }
+};
+$("#previewBtn").onclick = function(){
+  var w = window.open("", "_blank", "width=420,height=760");
+  if(!w) return out("弹窗被拦截");
+  w.document.write("<meta charset='utf-8'><div style='font:16px/2 sans-serif;padding:16px;white-space:pre-wrap'>" + $("#content").value.replace(/</g,"&lt;") + "</div>");
+};
+$("#histBtn").onclick = function(){ out("历史版本：本地未接（接口 /api/novel/chapters/{id} 已留 updated 字段）"); };
+$("#copyTitle").onclick = function(){ navigator.clipboard.writeText($("#chTitle").value); };
+$("#copyBody").onclick = function(){ navigator.clipboard.writeText($("#content").value); };
+$("#optTitle").onclick = function(){ $("#chTitle").value = ($("#chTitle").value||"第"+ (S.pj.chapters.length+1) +"章") + " · 反转"; };
+$("#exportBtn").onclick = function(){ api("/api/novel/projects/"+S.pid+"/export").then(function(r){ out("已导出 "+r.chapters+" 章 / "+r.words+" 字\n"+r.path); }); };
+$("#publishBtn").onclick = function(){ post("/api/novel/projects/"+S.pid+"/publish",{}).then(function(r){ out("已发布 "+r.chapters+" 章"); }).catch(function(e){ out("发布失败："+e.message+"（先审批章节）"); }); };
+$("#addCh").onclick = function(){ post("/api/novel/projects/"+S.pid+"/chapters",{volumeId:$("#volSel").value}).then(function(c){ return loadProject(S.pid).then(function(){ selectChapter(c.id); }); }); };
+$("#addVol").onclick = function(){ post("/api/novel/projects/"+S.pid+"/volumes",{}).then(function(){ return loadProject(S.pid); }); };
+$("#prevCh").onclick = function(){ var i=S.pj.chapters.findIndex(function(c){return c.id===S.cid;}); if(i>0) selectChapter(S.pj.chapters[i-1].id); };
+$("#nextCh").onclick = function(){ var i=S.pj.chapters.findIndex(function(c){return c.id===S.cid;}); if(i>=0 && i<S.pj.chapters.length-1) selectChapter(S.pj.chapters[i+1].id); };
+$("#dirBtn").onclick = function(){ out("目录："+S.pj.chapters.map(function(c){return c.index+"."+c.title;}).join("\n")); };
+$("#ball").onclick = function(){ document.querySelector(".right").scrollIntoView(); };
+document.querySelectorAll(".top .tab").forEach(function(t){ t.onclick = function(){ document.querySelectorAll(".top .tab").forEach(function(x){x.classList.remove("on");}); t.classList.add("on");
+  if(t.dataset.t==="set") out("设定：\n主角："+(S.pj.protagonist||"-")+"\n世界观："+(S.pj.world||"-")+"\n金手指："+(S.pj.golden_finger||"-"));
+  if(t.dataset.t==="out") out("大纲：\n"+(S.pj.outline||"（空，去点「灵感」或生成总纲）"));
+  if(t.dataset.t==="work") out("作品："+S.pj.title+" / "+S.pj.channel+" / "+S.pj.genre+" / 目标 "+S.pj.word_goal+" 字");
+  if(t.dataset.t==="note") out("笔记：（待接）");
+}; });
+
+function refreshCoin(){ return api("/api/ling/balance?uid=local").then(function(b){ money(b.total); return b; }); }
+
+Promise.all([api("/api/novel/tools"),api("/api/novel/models"),api("/api/ling/balance?uid=local"),api("/api/novel/wizard/config")]).then(function(r){
+  WIZ.cfg = r[3];
+  S.tools = r[0].tools; S.prompts = r[0].prompts;
+  $("#model").innerHTML = r[1].models.map(function(m){ return "<option value='"+m.name+"'>"+m.displayName+" · "+m.inputLingPerKChar+"/"+m.outputLingPerKChar+"</option>"; }).join("");
+  $("#model").value = "gemini-3-flash";
+  $("#gPrompt").innerHTML = S.prompts.map(function(p){ return "<option value='"+p.id+"'>"+p.title+"</option>"; }).join("");
+  money(r[2].total);
+  renderRibbon();
+  return loadList();
+}).then(function(){ return refreshCoin(); }).then(function(){ estGen("continue"); }).catch(function(e){ out("初始化失败："+e.message); });
+</script></body></html>

@@ -1,0 +1,25 @@
+import fs from 'node:fs'
+const list = await (await fetch('http://127.0.0.1:9650/json/list')).json()
+const page = list.find((t) => t.type === 'page')
+const ws = new WebSocket(page.webSocketDebuggerUrl)
+let id = 0; const pending = new Map()
+const logs = []
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.method === 'Runtime.consoleAPICalled') logs.push((m.params.args||[]).map(a=>a.value||'').join(' ').slice(0,180)); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) } })
+await new Promise((r) => ws.addEventListener('open', r))
+const call = (method, params) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params: params || {} })) })
+await call('Runtime.enable'); await call('Page.enable')
+const ev = async (x) => { const r = await call('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true }); if (r.result && r.result.exceptionDetails) return 'ERR:' + JSON.stringify(r.result.exceptionDetails).slice(0,200); return r.result && r.result.result && r.result.result.value }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+// 先回到「项目」让挂件有数据
+await ev('(function(){var bs=[].slice.call(document.querySelectorAll("button"));var b=bs.filter(function(x){return (x.textContent||"").trim()==="\u9879\u76ee"})[0];if(b)b.click();return "ok"})()')
+await wait(2000)
+console.log('dock class =', await ev('(function(){var d=document.querySelector(".nvl-dock");return d?d.className:"none"})()'))
+console.log('click title =', await ev('(function(){var b=document.querySelector(".nvl-dock__title");if(!b)return "no-title";b.click();return "clicked"})()'))
+await wait(4000)
+console.log('dock class2 =', await ev('(function(){var d=document.querySelector(".nvl-dock");return d?d.className:"none"})()'))
+console.log('dock text =', JSON.stringify(String(await ev('(function(){var d=document.querySelector(".nvl-dock");return d?(d.textContent||"").replace(/\s+/g," ").slice(0,260):"none"})()'))))
+console.log('feasible =', await ev('document.querySelectorAll(".nvl-dock__feasible").length'))
+console.log('logs =', logs.slice(-6).join(" | "))
+const shot = await call('Page.captureScreenshot', { format: 'png' })
+if (shot.result && shot.result.data) fs.writeFileSync('D:/NovelApp/_tmp/feas2.png', Buffer.from(shot.result.data, 'base64'))
+ws.close(); process.exit(0)

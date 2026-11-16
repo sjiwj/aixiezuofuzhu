@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "updated": "2026-11-05",
+  "note": "L1-L4 质检阈值。scripts/l1_l2_check.py 与 scripts/l3_l4_check.py 都只读本文件，不写死数字。缺文件时各脚本用内置兜底。",
+  "l1": {
+    "dash_max": 0,
+    "arabic_number_max": 0,
+    "paragraph_max_chars": 100,
+    "word_count_min": 3000,
+    "word_count_max": 4000
+  },
+  "l2": {
+    "protagonist": "甲",
+    "protagonist_per_1000_min": 3,
+    "protagonist_per_1000_max": 6,
+    "repeat_phrase_max": 3,
+    "phrase_len": 3,
+    "dialogue_tag_max_consecutive": 2,
+    "whitelist": [
+      "示例镇",
+      "雷公地",
+      "老蔫叔",
+      "乙",
+      "苏姑娘",
+      "示例滩",
+      "后半晌"
+    ]
+  },
+  "l3": {
+    "unit": "里",
+    "distance_tolerance_ratio": 0.2,
+    "distance_tolerance_min": 2,
+    "route_tolerance_ratio": 0.15,
+    "route_tolerance_min": 2,
+    "route_context_chars": 36
+  },
+  "l4": {
+    "day_tolerance_ratio": 0.2,
+    "min_days_for_check": 1,
+    "default_mode": "步行",
+    "speeds": {
+      "步行": {
+        "min_per_day": 40,
+        "max_per_day": 60,
+        "keywords": [
+          "步行",
+          "徒步",
+          "赶路",
+          "脚程",
+          "走",
+          "行路"
+        ]
+      },
+      "骑马": {
+        "min_per_day": 100,
+        "max_per_day": 150,
+        "keywords": [
+          "骑马",
+          "快马",
+          "纵马",
+          "驰",
+          "马"
+        ]
+      },
+      "马车": {
+        "min_per_day": 60,
+        "max_per_day": 100,
+        "keywords": [
+          "马车",
+          "车"
+        ]
+      },
+      "舟船": {
+        "min_per_day": 30,
+        "max_per_day": 100,
+        "keywords": [
+          "舟船",
+          "水路",
+          "船",
+          "舟",
+          "渡"
+        ]
+      }
+    }
+  },
+  "season": {
+    "window": "adjacent",
+    "window_lines": 3,
+    "window_modes": {
+      "paragraph": "只看单个段落内部：同段才比较，跨段矛盾查不到（最严格，误报最少）",
+      "adjacent": "相邻两段合并成一个窗口（段落 i 与 i+1，步长 1 段）：推荐默认，覆盖最常见的跨段矛盾",
+      "lines": "按 window_lines 行滑窗（步长 1 行）：段落被空行打散或分段过碎时用，最宽松，误报风险最高"
+    },
+    "groups": {
+      "春": [
+        "开春",
+        "桃",
+        "柳",
+        "燕子",
+        "花苞",
+        "春耕"
+      ],
+      "夏": [
+        "蝉",
+        "蛙",
+        "荷",
+        "暑",
+        "三伏",
+        "蒲扇",
+        "草席",
+        "烈日"
+      ],
+      "秋": [
+        "桂",
+        "枫",
+        "菊",
+        "蟹",
+        "落叶",
+        "收秋"
+      ],
+      "冬": [
+        "雪",
+        "冰",
+        "霜",
+        "冻",
+        "棉袄",
+        "炉火",
+        "炭火",
+        "入冬",
+        "腊月"
+      ]
+    },
+    "conflicts": [
+      [
+        "夏",
+        "冬"
+      ]
+    ]
+  },
+  "gate3": {
+    "note": "闸 3 三维（物品/能力/伏笔）阈值。foreshadow_stale_after：伏笔埋了多少章没动就提醒。",
+    "foreshadow_stale_after": 5
+  }
+}

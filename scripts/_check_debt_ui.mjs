@@ -1,0 +1,16 @@
+const list = await (await fetch('http://127.0.0.1:9650/json/list')).json()
+const page = list.find((t) => t.type === 'page')
+const ws = new WebSocket(page.webSocketDebuggerUrl)
+let id = 0; const pending = new Map()
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) } })
+await new Promise((r) => ws.addEventListener('open', r))
+const call = (method, params) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params: params || {} })) })
+await call('Runtime.enable')
+const ev = async (x) => { const r = await call('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true }); if (r.result && r.result.exceptionDetails) return 'ERR:' + JSON.stringify(r.result.exceptionDetails).slice(0,150); return r.result && r.result.result && r.result.result.value }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+// 进码字
+await ev('(function(){var b=[].slice.call(document.querySelectorAll("button")).filter(function(x){return (x.textContent||"").trim().indexOf("\u7801\u5b57")===0})[0];if(b)b.click();return "ok"})()')
+await wait(2500)
+console.log('debt box =', await ev('document.querySelectorAll(".nvl-debt").length'))
+console.log('debt text =', JSON.stringify(String(await ev('(function(){var d=document.querySelector(".nvl-debt");return d?(d.textContent||"").replace(/\s+/g," ").slice(0,200):"none"})()'))))
+ws.close(); process.exit(0)

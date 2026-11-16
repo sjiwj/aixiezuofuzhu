@@ -1,0 +1,44 @@
+{
+  "unit": "里",
+  "note": "示例地图，按第一章建立。坐标原点=示例镇，x正为东，y正为北。routes: 路线表，direction 为 from→to 的走向，distance 为可通行路程（里）。",
+  "places": [
+    {
+      "name": "示例镇",
+      "x": 0,
+      "y": 0,
+      "region": "东域"
+    },
+    {
+      "name": "雷公地",
+      "x": -5,
+      "y": 0,
+      "region": "东域",
+      "note": "镇西五里"
+    },
+    {
+      "name": "示例滩",
+      "x": 300,
+      "y": 0,
+      "region": "东域",
+      "note": "示例镇往东三百里"
+    }
+  ],
+  "routes": [
+    {
+      "from": "示例镇",
+      "to": "雷公地",
+      "direction": "西",
+      "distance": 5,
+      "mode": "步行",
+      "note": "镇西五里，山路"
+    },
+    {
+      "from": "示例镇",
+      "to": "示例滩",
+      "direction": "东",
+      "distance": 300,
+      "mode": "步行",
+      "note": "官道东行，步行约六天"
+    }
+  ]
+}

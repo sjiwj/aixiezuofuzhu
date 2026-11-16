@@ -1,0 +1,25 @@
+const PORT = '9650'
+const list = await (await fetch('http://127.0.0.1:' + PORT + '/json/list')).json()
+const page = list.find((t) => t.type === 'page')
+const ws = new WebSocket(page.webSocketDebuggerUrl)
+let id = 0; const pending = new Map()
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) } })
+await new Promise((r) => ws.addEventListener('open', r))
+const call = (method, params) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params: params || {} })) })
+await call('Runtime.enable')
+const ev = async (expression) => { const r = await call('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (r.result && r.result.exceptionDetails) return 'ERR:' + r.result.exceptionDetails.text; return r.result && r.result.result && r.result.result.value }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+const expanded = () => ev('(() => { const t=document.querySelector(".nvl-picker--chapter .nvl-picker__trigger"); return t ? t.getAttribute("aria-expanded") : "no-trigger" })()')
+
+console.log('expanded0 =', await expanded())
+if ((await expanded()) !== 'true') { await ev('document.querySelector(".nvl-picker--chapter .nvl-picker__trigger").click()'); await wait(500) }
+console.log('expanded1 =', await expanded())
+console.log('items =', JSON.stringify(await ev('([...document.querySelectorAll(".nvl-picker__menu .nvl-picker__item")].map(e=>(e.textContent||"").trim()))')))
+console.log('click =', await ev('(() => { const el=[...document.querySelectorAll(".nvl-picker__menu .nvl-picker__item")].find(e=>/新建一章/.test((e.textContent||"").trim())); if(!el) return "no-item"; el.click(); return "ok" })()'))
+await wait(900)
+console.log('dialog =', await ev('(() => { const d=document.querySelector("[role=dialog]"); return d ? "yes" : "no-dialog" })()'))
+console.log('fill =', await ev('(() => { const d=document.querySelector("[role=dialog]"); if(!d) return "no-dialog"; const i=d.querySelector("input"); if(!i) return "no-input"; i.value="K1C首章"; i.dispatchEvent(new Event("input",{bubbles:true})); return "filled" })()'))
+console.log('ok =', await ev('(() => { const d=document.querySelector("[role=dialog]"); if(!d) return "no-dialog"; const b=[...d.querySelectorAll("button")].find(x=>(x.textContent||"").trim()==="确定"); if(!b) return "no-btn"; b.click(); return "clicked" })()'))
+await wait(2500)
+console.log('AFTER =', JSON.stringify(await ev('({cb: localStorage.getItem("novelapp.currentBook"), lf: localStorage.getItem("novelapp.lastFile"), pickers: ([...document.querySelectorAll(".nvl-picker")].map(e=>(e.textContent||"").trim()))})')))
+ws.close(); process.exit(0)

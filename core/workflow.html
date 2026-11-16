@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工作流 · 炼字复刻</title>
+<style>
+:root{--bg:#f5f6f5;--card:#fff;--line:#e6e9e7;--fg:#1b2622;--mut:#6d7b75;--green:#0e7b57;--soft:#eaf6f0;--amber:#b7791f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.top{height:54px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 20px}
+.logo{font-weight:700;color:var(--green)}
+.spacer{flex:1}
+button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+button.p{background:var(--green);color:#fff;border-color:var(--green)}
+.wrap{display:grid;grid-template-columns:260px 1fr 380px;gap:16px;padding:16px 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+.node{padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;cursor:pointer}
+.node.on{border-color:var(--green);background:var(--soft)}
+.node .t{font-size:13px;font-weight:600}
+.node .m{font-size:11.5px;color:var(--mut);margin-top:2px}
+.badge{font-size:10.5px;padding:1px 6px;border-radius:6px;background:#eef3f0;color:#4d635b;margin-right:6px}
+.badge.proc{background:#eaf0ff;color:#38508f}
+.badge.out{background:#fff3e0;color:#a06a12}
+textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font:13px/1.7 ui-monospace,Consolas,monospace;resize:vertical}
+input{width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:13px}
+.k{font-size:12px;color:var(--mut);margin:8px 0 4px}
+pre{background:#fbfdfc;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;max-height:260px;overflow:auto}
+.step{border-left:3px solid var(--green);padding:6px 10px;margin-bottom:8px;background:#fbfdfc}
+.step .h{font-size:12px;color:var(--mut)}
+.err{color:#b23b3b}
+</style></head><body>
+<div class="top"><div class="logo">炼字复刻</div><div style="color:#6d7b75;font-size:13px">工作流（三节点 DAG + 命名变量）</div>
+<div class="spacer"></div><a href="/" style="color:#0e7b57;font-size:13px">返回工作台</a><button class="p" id="runTop" style="margin-left:12px">运行</button></div>
+
+<div class="wrap">
+  <div class="card"><div style="font-weight:600;margin-bottom:8px">节点</div><div id="nodes"></div></div>
+
+  <div class="card">
+    <div id="editor"><div class="k">选一个节点</div></div>
+    <div class="k">运行参数</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><div class="k" style="margin-top:0">@ 引用 · 书名</div><input id="refBook" value="退单"></div>
+      <div><div class="k" style="margin-top:0"># 补充 · 要求</div><input id="extraReq" value="别写旁白，多用短句"></div>
+    </div>
+    <div class="k">输入 src.text</div>
+    <textarea id="srcText" style="height:90px">他翻开账本，规则很简单：谁有凭证谁说话。</textarea>
+  </div>
+
+  <div class="card"><div style="font-weight:600;margin-bottom:8px">运行结果</div><pre id="out">就绪</pre></div>
+</div>
+
+<script>
+var $ = function(s){ return document.querySelector(s); };
+var WF = null, cur = null;
+function api(u, o){ return fetch(u, o).then(function(r){ return r.json().then(function(d){ if(!r.ok) throw new Error(d.message || d.error || r.status); return d; }); }); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]; }); }
+function badge(t){ return t === "input" ? '<span class="badge">输入</span>' : t === "process" ? '<span class="badge proc">处理</span>' : '<span class="badge out">输出</span>'; }
+function renderNodes(){
+  $("#nodes").innerHTML = (WF.nodes||[]).map(function(n, i){
+    var outs = (n.outputs||[]).map(function(o){ return n.id+"."+o.id; }).join(", ");
+    return '<div class="node'+(cur===i?" on":"")+'" data-i="'+i+'">'+badge(n.type)+
+      '<div class="t">'+esc(n.title||n.id)+'</div><div class="m">'+esc(outs||"—")+'</div></div>';
+  }).join("");
+  $("#nodes").querySelectorAll(".node").forEach(function(el){ el.onclick = function(){ cur = +el.dataset.i; renderNodes(); renderEditor(); }; });
+}
+function renderEditor(){
+  var n = WF.nodes[cur]; if(!n) return;
+  $("#editor").innerHTML = '<div class="k" style="margin-top:0">'+esc(n.id)+' · '+(n.type)+'</div>' +
+    '<div style="font-weight:600;margin-bottom:6px">'+esc(n.title||"")+'</div>' +
+    '<div class="k">prompt（支持 {{node.output}} / {{@引用}} / {{#补充}}）</div>' +
+    '<textarea id="promptBox" style="height:150px">'+esc(n.prompt||"")+'</textarea>' +
+    '<div class="k">模型</div><input id="modelBox" value="'+esc(n.model||"gemini-3-flash")+'">';
+  $("#promptBox").oninput = function(){ n.prompt = this.value; };
+  $("#modelBox").oninput = function(){ n.model = this.value; };
+}
+function run(){
+  $("#out").textContent = "运行中…";
+  var body = { workflow: WF,
+    inputs: { "src.text": $("#srcText").value },
+    refs: { "书名": $("#refBook").value },
+    extras: { "补充要求": $("#extraReq").value } };
+  api("/api/novel/workflow/run", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })
+    .then(function(r){
+      $("#out").innerHTML = r.steps.map(function(s){
+        return '<div class="step"><div class="h">'+esc(s.node)+' · '+esc(s.type)+' · '+esc(s.status)+'</div>'+
+          (s.prompt ? '<div style="font-size:12px;color:#6d7b75">prompt：'+esc(s.prompt.slice(0,160))+'…</div>' : '')+
+          '<div style="font-size:12.5px;margin-top:4px">'+esc((s.text||Object.values(s.outputs||{})[0]||"").slice(0,200))+'</div></div>';
+      }).join("");
+    })
+    .catch(function(e){ $("#out").innerHTML = '<span class="err">失败：'+esc(e.message)+'</span>'; });
+}
+$("#runTop").onclick = run;
+api("/api/novel/workflow/sample").then(function(wf){ WF = wf; cur = 1; renderNodes(); renderEditor(); })
+  .catch(function(e){ $("#out").textContent = "加载失败：" + e.message; });
+</script></body></html>

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>创作工具 · 炼字复刻</title>
+<style>
+:root{--bg:#f5f6f5;--card:#fff;--line:#e6e9e7;--fg:#1b2622;--mut:#6d7b75;--green:#0e7b57;--soft:#eaf6f0;--purple:#5b3fd6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.top{height:54px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 20px;position:sticky;top:0;z-index:5}
+.logo{font-weight:700;color:var(--green)}
+.tabs{display:flex;gap:6px}
+.tab{padding:6px 12px;border-radius:8px;font-size:13px;color:var(--mut);cursor:pointer}
+.tab.on{background:var(--soft);color:var(--green);font-weight:600}
+.spacer{flex:1}
+button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer}
+button.p{background:var(--green);color:#fff;border-color:var(--green)}
+button.mini{padding:2px 7px;font-size:11.5px}
+.wrap{padding:16px 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+.k{font-size:12px;color:var(--mut)}
+input,textarea,select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;background:#fff}
+textarea{width:100%;resize:vertical}
+.msg{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0;position:relative}
+.msg.user{background:#f6fbf8}
+.msg.assistant{background:#fbfcff}
+.msg .who{font-size:11px;color:var(--mut);margin-bottom:2px}
+.msg .ops{position:absolute;right:8px;top:6px;display:flex;gap:4px;opacity:0;transition:.15s}
+.msg:hover .ops{opacity:1}
+.branch{color:#a06a12;font-size:11px;margin-left:6px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.pcard{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.pcard h4{margin:0 0 4px;font-size:14px}
+.pcard .meta{font-size:11.5px;color:var(--mut)}
+.pcard .tags{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap}
+.pcard .tags span{font-size:11px;background:#f2f6f4;color:#5c7067;border-radius:6px;padding:1px 6px}
+.pcard .row{margin-top:8px;display:flex;gap:6px;align-items:center}
+.stars{color:#d9a520;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{border-bottom:1px solid #eef2f0;padding:6px 4px;text-align:left}
+.bar{height:7px;background:#eef3f0;border-radius:9px;overflow:hidden;width:90px;display:inline-block;vertical-align:middle}
+.bar i{display:block;height:100%;background:var(--green)}
+pre{background:#fbfdfc;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;max-height:300px;overflow:auto}
+</style></head><body>
+
+<div class="top"><div class="logo">炼字复刻</div>
+  <div class="tabs">
+    <div class="tab on" data-t="chat">分支对话</div>
+    <div class="tab" data-t="prompts">提示词市场</div>
+    <div class="tab" data-t="fusion">多书融合</div>
+  </div>
+  <div class="spacer"></div><a href="/" style="font-size:13px;color:#0e7b57">返回工作台</a>
+</div>
+
+<!-- 分支对话 -->
+<div class="wrap" id="pane-chat">
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:16px">
+    <div class="card">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <b id="chatTitle" style="font-size:15px">新对话</b>
+        <span class="k" id="chatId"></span><div class="spacer"></div>
+        <button class="mini" id="newChat">新建对话</button>
+      </div>
+      <div id="msgs"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="say" placeholder="说点什么…（Enter 发送）" style="flex:1">
+        <button class="p" id="send">发送</button>
+      </div>
+      <div class="k" style="margin-top:8px">悬停任意消息可「从这里分叉 / 编辑」——旧分支保留，可随时切回。</div>
+    </div>
+    <div class="card">
+      <div class="k">分支树（点消息切换当前分支）</div>
+      <div id="tree" style="font-size:12.5px;margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 提示词市场 -->
+<div class="wrap" id="pane-prompts" style="display:none">
+  <div class="card" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input id="pq" placeholder="搜索标题 / 内容 / 标签" style="width:260px">
+    <select id="pcat"><option value="">全部类型</option></select>
+    <select id="psort"><option value="uses">按使用</option><option value="rating">按评分</option><option value="new">按更新</option></select>
+    <button id="psearch" class="p">搜索</button>
+    <div class="spacer"></div>
+    <button id="pnew">新建提示词</button>
+  </div>
+  <div class="pgrid" id="plist"></div>
+</div>
+
+<!-- 多书融合 -->
+<div class="wrap" id="pane-fusion" style="display:none">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="k">参考 1（必填）</div><input id="b1t" value="退单" style="width:100%">
+      <textarea id="b1x" style="height:90px;margin-top:6px">客户把合同撕了扔在他脸上。他翻开账本，规则很简单：谁有凭证谁说话。</textarea>
+      <div class="k">参考 2（可选）</div><input id="b2t" value="系统想害我" style="width:100%">
+      <textarea id="b2x" style="height:90px;margin-top:6px">好消息！有系统！坏消息！系统貌似出 bug 了总想弄死我！</textarea>
+      <div style="margin-top:12px"><button class="p" id="fuse">拆解并融合</button></div>
+    </div>
+    <div class="card"><div id="fout" class="k">未运行</div></div>
+  </div>
+</div>
+
+<script>
+var $ = function(s){ return document.querySelector(s); };
+var S = { cid: null, conv: null, tab: "chat", prompts: [] };
+function api(u, o){ return fetch(u, o).then(function(r){ return r.json().then(function(d){ if(!r.ok) throw new Error(d.message || d.error || r.status); return d; }); }); }
+function post(u, b){ return api(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(b||{})}); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]; }); }
+
+document.querySelectorAll(".tab").forEach(function(t){ t.onclick = function(){
+  S.tab = t.dataset.t; document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("on");}); t.classList.add("on");
+  ["chat","prompts","fusion"].forEach(function(k){ $("#pane-"+k).style.display = k===S.tab ? "block" : "none"; });
+};});
+
+/* ---------- 分支对话 ---------- */
+function renderChat(d){
+  S.conv = d.conversation;
+  $("#chatTitle").textContent = d.conversation.title;
+  $("#chatId").textContent = d.conversation.id;
+  var cur = d.conversation.current;
+  $("#msgs").innerHTML = d.path.map(function(m){
+    var isCur = m.id === cur ? ' style="border-color:#0e7b57"' : "";
+    var branch = m.meta && m.meta.fork_of ? '<span class="branch">分支</span>' : (m.meta && m.meta.edited_from ? '<span class="branch">已编辑</span>' : "");
+    return '<div class="msg '+esc(m.role)+'"'+isCur+' data-id="'+m.id+'"><div class="who">'+esc(m.role)+branch+'</div>'+esc(m.content)+
+      '<div class="ops"><button class="mini" data-fork="'+m.id+'">分叉</button><button class="mini" data-edit="'+m.id+'">编辑</button></div></div>';
+  }).join("");
+  $("#msgs").querySelectorAll("[data-fork]").forEach(function(b){
+    b.onclick = function(){
+      var t = prompt("从这里开新分支，输入新内容：", "换一个方向：主角当场翻脸");
+      if(t === null) return;
+      post("/api/novel/chat/"+S.conv.id+"/fork", {message_id: b.dataset.fork, content: t})
+        .then(loadChat).catch(function(e){ alert(e.message); });
+    };
+  });
+  $("#msgs").querySelectorAll("[data-edit]").forEach(function(b){
+    b.onclick = function(){
+      var t = prompt("改这条（旧内容保留为另一分支）：");
+      if(t === null) return;
+      post("/api/novel/chat/"+S.conv.id+"/edit", {message_id: b.dataset.edit, content: t})
+        .then(loadChat).catch(function(e){ alert(e.message); });
+    };
+  });
+  // 树
+  var kids = d.tree.children, out = [];
+  d.tree.messages.forEach(function(m){
+    var n = (kids[m.id]||[]).length;
+    out.push('<div style="margin:3px 0;padding-left:'+((m.parent?8:0))+'px">'+
+      '<span data-sw="'+m.id+'" style="cursor:pointer;color:'+(m.id===cur?"#0e7b57":"#4d5f57")+'">'+
+      (m.role==="user"?"你":"AI")+'：'+esc((m.content||"").slice(0,14))+(n>1?' <b style="color:#a06a12">('+n+' 支)</b>':'')+'</span></div>');
+  });
+  $("#tree").innerHTML = out.join("");
+  $("#tree").querySelectorAll("[data-sw]").forEach(function(el){
+    el.onclick = function(){ post("/api/novel/chat/"+S.conv.id+"/switch", {message_id: el.dataset.sw}).then(loadChat); };
+  });
+}
+function loadChat(){
+  if(!S.cid) return post("/api/novel/chat", {title:"分支对话"}).then(function(c){ S.cid = c.id; return loadChat(); });
+  return api("/api/novel/chat/"+S.cid).then(renderChat);
+}
+$("#send").onclick = function(){
+  var v = $("#say").value.trim(); if(!v) return;
+  $("#say").value = "";
+  post("/api/novel/chat/"+S.cid+"/messages", {role:"user", content:v})
+    .then(function(){ return post("/api/novel/chat/"+S.cid+"/messages", {role:"assistant", content:"（本地占位）收到：\""+v.slice(0,30)+"\"。接模型后这里返回正文。"}); })
+    .then(loadChat).catch(function(e){ alert(e.message); });
+};
+$("#say").onkeydown = function(e){ if(e.key === "Enter") $("#send").click(); };
+$("#newChat").onclick = function(){ post("/api/novel/chat", {title:"新对话"}).then(function(c){ S.cid = c.id; loadChat(); }); };
+
+/* ---------- 提示词市场 ---------- */
+function renderPrompts(items){
+  $("#plist").innerHTML = items.map(function(p){
+    return '<div class="pcard"><h4>'+esc(p.title)+' <span class="k">v'+esc(p.version)+'</span></h4>'+
+      '<div class="meta">'+esc(p.category)+' · '+esc(p.author)+' · 使用 '+p.uses+' · 收藏 '+p.favorites+'</div>'+
+      '<div style="font-size:12.5px;color:#4d5f57;margin-top:6px">'+esc(p.prompt.slice(0,90))+'</div>'+
+      '<div class="tags">'+(p.tags||[]).map(function(t){return '<span>'+esc(t)+'</span>';}).join("")+
+        '<span>'+esc(p.visibility)+'</span></div>'+
+      '<div class="row"><span class="stars">★ '+p.rating.avg+'（'+p.rating.count+'）</span><div class="spacer" style="flex:1"></div>'+
+      '<button class="mini" data-rate="'+p.id+'">评分</button><button class="mini" data-fav="'+p.id+'">收藏</button></div></div>';
+  }).join("");
+  $("#plist").querySelectorAll("[data-rate]").forEach(function(b){
+    b.onclick = function(){ post("/api/novel/prompts/"+b.dataset.rate+"/rate", {score:5}).then(searchPrompts); };
+  });
+  $("#plist").querySelectorAll("[data-fav]").forEach(function(b){
+    b.onclick = function(){ post("/api/novel/prompts/"+b.dataset.fav+"/favorite", {delta:1}).then(searchPrompts); };
+  });
+}
+function searchPrompts(){
+  var qs = "?q="+encodeURIComponent($("#pq").value)+"&category="+encodeURIComponent($("#pcat").value)+"&sort="+$("#psort").value;
+  return api("/api/novel/prompts"+qs).then(function(d){
+    if(!$("#pcat").options.length || $("#pcat").options.length === 1){
+      $("#pcat").innerHTML = '<option value="">全部类型</option>' + d.categories.map(function(c){ return '<option>'+c+'</option>'; }).join("");
+    }
+    renderPrompts(d.items);
+  });
+}
+$("#psearch").onclick = searchPrompts;
+$("#psort").onchange = searchPrompts;
+$("#pnew").onclick = function(){
+  var t = prompt("提示词标题："); if(!t) return;
+  var body = prompt("提示词内容："); if(!body) return;
+  post("/api/novel/prompts", {title:t, prompt:body, category:"续写", visibility:"private"}).then(searchPrompts);
+};
+
+/* ---------- 多书融合 ---------- */
+$("#fuse").onclick = function(){
+  var books = [];
+  if($("#b1x").value.trim()) books.push({title:$("#b1t").value, text:$("#b1x").value});
+  if($("#b2x").value.trim()) books.push({title:$("#b2t").value, text:$("#b2x").value});
+  $("#fout").textContent = "拆解中…";
+  post("/api/novel/fusion", {books:books}).then(function(r){
+    $("#fout").innerHTML =
+      '<div style="font-size:13px"><b>综合分 '+r.total+'</b> · 配方：'+r.recipe.label+'</div>' +
+      '<table style="margin-top:8px"><tr><th>维度</th><th>分数</th><th>差异</th></tr>' +
+      r.nine.map(function(d){ return '<tr><td>'+d.label+'</td><td><span class="bar"><i style="width:'+d.avg+'%"></i></span> '+d.avg+'</td><td>'+d.spread+'</td></tr>'; }).join("") +
+      '</table>' +
+      '<div style="margin-top:10px;font-size:12.5px">书名：<b>'+esc(r.book.title)+'</b><br>主线：'+esc(r.book.mainline)+'<br>简介：'+esc(r.book.summary)+'</div>' +
+      '<pre style="margin-top:8px">'+r.book.first3.map(function(f){ return '第'+f.idx+'章：'+f.plan; }).join('\n')+'</pre>';
+  }).catch(function(e){ $("#fout").textContent = "失败：" + e.message; });
+};
+
+loadChat();
+searchPrompts();
+</script></body></html>

@@ -1,0 +1,28 @@
+# 门禁配置（与 quality 分数完全分离）
+#
+# 规则「要不要拦」写在 reviewers.yaml 的 gate 段（action: block/warn），
+# 这里只放「拿什么去拦」的数据：词表、正则、交叉核对项。
+#
+# 重要：某一项数据为空 = 本轮无法判定 -> gate.status=inconclusive，
+#       脚本会明确报「未配置」，绝不静默通过（OpenWrite P0 原则）。
+
+sensitive:
+  # 违禁词：命中即按 reviewers.yaml 里的 action 处理（默认 block）
+  words: []
+  #   - 示例违禁词
+  #   - 另一个
+  # 正则：不区分大小写；命中同样处理
+  patterns: []
+  #   - '(?i)\b示例\s*\d{3}\b'
+
+fact_error:
+  # 需要交叉核对的项（人名/地名/时间线/数值一致等）。
+  # 目前没有自动核对器，列出后 gate 会标「已配置但无自动核对器」，
+  # 由审稿团（logic/continuity）或人工兜底，不会假装通过。
+  rules: []
+  #   - 人名与「设定库/角色.md」一致
+  #   - 地点与 config/map.json 一致
+
+word_count:
+  # 与 reviewers.yaml 的 min 二选一，这里优先
+  min: 1500

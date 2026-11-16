@@ -1,0 +1,81 @@
+# —— 发布用 .gitignore（2026-11-17）——
+# 原则：依赖树、备份、打包产物、运行时数据、密钥 一律不进版本库。
+
+# 依赖与上游源码（5.6GB，靠 requirements 装）
+dsh-src/
+node_modules/
+vendor/
+
+# 备份与归档（合计 >2GB）
+_backup/
+.backup/
+_archive/
+_trash*/
+_backup*/
+*.bak
+*.bak-*
+*.bak2
+*.bak3
+*.bak4
+*.bak5
+*.orig
+*~/
+
+# 打包与构建产物
+_asar_edit/
+dsh-dist*/
+dsh-dist.new-*/
+dist/
+build/
+发布/
+发布桌面版/
+*.exe
+*.msi
+*.zip
+*.7z
+
+# 临时与日志
+_tmp/
+*.log
+logs/
+*.tmp
+
+# 用户自己的书与 demo 数据（2026-11-17 决定：演示项目不随仓库发布）
+# 用户自己的书与 demo 数据（2026-11-17 决定：演示项目不随仓库发布）
+projects/
+
+# 内部资料与竞品取证（含作者小说原文摘录 / 竞品 JS，不公开）
+docs/*
+!docs/legal/
+!docs/legal/**
+core/design-skeleton.html
+
+# docs/legal 只公开第三方许可清单；其余是内部合规备忘
+docs/legal/绕过与传播风险.md
+docs/legal/文案改动清单-v0.md
+
+# 运行时数据（用户自己的书与账本）
+data/
+!data/config/ads.json
+**/user_token.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# 打包/扫描副产物
+_prep*.log
+_pkg*.log
+_build*.log
+_chk*.ps1
+_diag*.ps1
+
+# 环境与机器相关
+.env
+*.local.json

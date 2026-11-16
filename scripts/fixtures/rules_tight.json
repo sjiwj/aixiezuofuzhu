@@ -1,0 +1,50 @@
+{
+  "l1": {
+    "word_count_min": 5000,
+    "dash_max": 1,
+    "paragraph_max_chars": 60
+  },
+  "l2": {
+    "protagonist": "乙",
+    "protagonist_per_1000_min": 0,
+    "protagonist_per_1000_max": 100
+  },
+  "l4": {
+    "speeds": {
+      "步行": {
+        "min_per_day": 30,
+        "max_per_day": 40,
+        "keywords": [
+          "步行",
+          "走"
+        ]
+      },
+      "骑马": {
+        "min_per_day": 100,
+        "max_per_day": 150,
+        "keywords": [
+          "骑马",
+          "马"
+        ]
+      }
+    }
+  },
+  "season": {
+    "window": "lines",
+    "window_lines": 3,
+    "groups": {
+      "夏": [
+        "蝉"
+      ],
+      "冬": [
+        "雪"
+      ]
+    },
+    "conflicts": [
+      [
+        "夏",
+        "冬"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+小说创作工作台（NovelApp）
+Copyright 2026 YG
+
+本项目以 Apache License 2.0 授权（全文见 LICENSE）。
+
+名称与商标：本项目的名称「小说创作工作台」、程序名 NovelApp、Logo 与图标**不随代码授权**。
+Apache License 2.0 第 6 条不授予商标权。分发本软件或其衍生作品时，必须保留本文件（NOTICE）
+与 LICENSE，且不得暗示获得作者背书。
+
+第三方组件：随安装包分发的第三方组件（pywebview、pythonnet、cryptography、MarkupSafe、
+pyreadline3、CPython、Microsoft WebView2、Visual C++ 运行库等）各受其自身许可证约束，
+清单与待补项见 docs/legal/third-party-notices-v0.md；安装目录下应随包提供
+THIRD-PARTY-NOTICES。
+
+无担保：本软件按「现状」提供，不附带任何明示或默示担保。使用者对生成内容的合规性、
+平台规则（含 AI 生成内容标注）与著作权负责。

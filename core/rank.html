@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 小说榜 · 炼字复刻</title>
+<style>
+:root{--bg:#f5f6f5;--card:#fff;--line:#e6e9e7;--fg:#1b2622;--mut:#6d7b75;--green:#0e7b57;--soft:#eaf6f0;--warm:#fff6f2;--orange:#e2613f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+a{color:inherit;text-decoration:none}
+.top{height:56px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 20px;position:sticky;top:0;z-index:5}
+.logo{font-weight:700;color:var(--green);font-size:16px}
+.search{flex:1;max-width:420px;background:#f3f5f4;border-radius:10px;padding:7px 12px;color:var(--mut);font-size:13px}
+.pill{font-size:12px;background:#fff3d6;color:#a9741a;border-radius:8px;padding:2px 8px}
+.spacer{flex:1}
+.btn{background:var(--green);color:#fff;border:0;border-radius:9px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--fg);border:1px solid var(--line)}
+.wrap{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 56px)}
+.side{background:#fff;border-right:1px solid var(--line);padding:12px 0}
+.side .grp{font-size:11px;color:#9aa8a2;padding:8px 18px 4px}
+.side a{display:block;padding:8px 18px;font-size:13.5px;color:#33413b}
+.side a.on{background:#fff3e8;color:var(--orange);border-left:3px solid var(--orange);font-weight:600}
+.main{padding:0 0 40px}
+.hero{background:linear-gradient(180deg,#fff7f3,#fff);border-bottom:1px solid var(--line);padding:22px 26px 18px}
+.kicker{display:inline-flex;gap:6px;align-items:center;background:#fff1ea;color:#c9542f;border-radius:9px;padding:3px 10px;font-size:12px;margin-bottom:10px}
+h1{margin:4px 0 6px;font-size:26px}
+.sub{color:var(--mut);font-size:13px}
+.stats{display:flex;gap:18px;margin-top:10px;font-size:12.5px;color:#8a5a3f}
+.stats b{color:#c9542f}
+.tabs{display:flex;gap:8px;padding:12px 26px 0;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.plat{padding:6px 12px;border-radius:9px;font-size:13px;color:var(--mut);cursor:pointer;border:1px solid transparent}
+.plat.on{background:#efe9ff;color:#5b3fd6;border-color:#ded1ff;font-weight:600}
+.plat.ext::after{content:" ↗";font-size:11px;color:#9aaba4}
+.catbar{display:flex;gap:8px;overflow:auto;padding:10px 26px;background:#fff;border-bottom:1px solid var(--line)}
+.catbar .c{white-space:nowrap;font-size:12.5px;padding:5px 10px;border-radius:8px;background:#f5f8f6;color:#4d5f57;cursor:pointer;border:1px solid transparent}
+.catbar .c.on{background:var(--soft);color:var(--green);border-color:#cfe9de;font-weight:600}
+.catbar .c b{font-weight:600;margin-left:4px;color:#8b9a93}
+.tab{padding:8px 12px;border-radius:9px 9px 0 0;font-size:13.5px;color:var(--mut);cursor:pointer}
+.tab.on{background:#f2f8f5;color:var(--green);font-weight:600}
+.body{display:grid;grid-template-columns:1fr;gap:18px;padding:16px 26px}
+.cats{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;align-self:start;max-height:70vh;overflow:auto}
+.cats div{padding:7px 10px;border-radius:8px;font-size:13px;color:#43514b;cursor:pointer}
+.cats div:hover{background:#f4f8f6}
+.cats div.on{background:var(--soft);color:var(--green);font-weight:600}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+.trend-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.trend-hd h2{margin:0;font-size:16px}
+select{border:1px solid #cfe9de;background:#f4fbf7;color:var(--green);border-radius:8px;padding:4px 8px;font:inherit;font-size:12.5px}
+.hot{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.hot span{background:#f1f6f3;border:1px solid #dfeae4;color:#42604f;border-radius:8px;padding:4px 10px;font-size:12.5px}
+.headline{font-size:18px;font-weight:700;margin:8px 0 6px;line-height:1.5}
+.overview{color:#3d4a44;font-size:13.5px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.box{background:#fafcfb;border:1px solid #e8efeb;border-radius:10px;padding:12px}
+.box h4{margin:0 0 6px;font-size:13px;color:#2d6a52}
+.box p{margin:0;font-size:12.8px;color:#4a5852}
+.tools{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tool h5{margin:0 0 6px;font-size:12.5px;color:#7a5b2e}
+.tool li{font-size:12.3px;color:#4c5a54;margin:3px 0}
+.list{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
+.item{display:flex;gap:12px;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.item .no{width:26px;text-align:center;color:#b9a08f;font-weight:700}
+.cover{width:60px;height:82px;border-radius:6px;background:#eef2f0;object-fit:cover;flex:none}
+.item h3{margin:0;font-size:14.5px}
+.meta{color:var(--mut);font-size:12px;margin:2px 0 6px}
+.desc{font-size:12.5px;color:#5a6862;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tags{display:flex;gap:6px;margin-top:6px}
+.tags span{font-size:11px;background:#f2f6f4;color:#5c7067;border-radius:6px;padding:1px 6px}
+.tags .src{font-size:11px;color:#6d7b75;text-decoration:underline}
+.locked{margin-top:12px;background:#fff8ec;border:1px dashed #e8cfa6;color:#9c7326;border-radius:10px;padding:10px;font-size:12.5px}
+.load{color:var(--mut);font-size:13px;padding:10px 0}
+</style></head><body>
+
+<div class="top">
+  <div class="logo">炼字复刻</div>
+  <div class="search">搜索作品、灵感、AI 工具…</div>
+  <span class="pill">NEW</span><span style="color:#0e7b57;font-size:12.5px">炼字工坊 v2.7.60 更新…</span>
+  <div class="spacer"></div>
+  <a class="btn ghost" href="/">返回工作台</a>
+  <button class="btn" onclick="refreshAll()">刷新数据</button>
+</div>
+
+<div class="wrap">
+  <aside class="side">
+    <div class="grp">创作</div>
+    <a href="/">工作台</a><a href="/">我的小说</a><a href="/">实用短篇</a><a href="/">同人创作</a>
+    <div class="grp">创作工具</div>
+    <a href="/">绘影工坊</a><a href="/">AI率检测</a><a href="/">降低AI率</a>
+    <a class="on" href="/rank">AI 小说榜</a><a href="/">提示词库</a>
+    <div class="grp">数据中心</div>
+    <a href="/">知识库</a><a href="/">邀请奖励</a>
+  </aside>
+
+  <main class="main">
+    <div class="hero">
+      <div class="kicker">⚡ AI 网文风向</div>
+      <h1>小说排行榜</h1>
+      <div class="sub">AI 驱动实时数据雷达 · 精准追踪每日热书变化</div>
+      <div class="stats"><span><b>320+</b> 品类</span><span><b>280W+</b> 监控</span><span><b>15:00</b> 日更</span></div>
+    </div>
+
+    <div class="tabs" id="plats"></div>
+    <div class="tabs" id="tabs" style="border-top:1px solid #f0f3f1"></div>
+    <div class="catbar" id="catbar"></div>
+
+    <div class="body" style="grid-template-columns:1fr">
+      <div>
+        <div class="panel" id="trend"><div class="load">读取风向标…</div></div>
+        <div class="list" id="list"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+var $ = function(s){ return document.querySelector(s); };
+var S = { gender: "1", rankType: "2", categoryId: "0", history: [], date: "", cfg: null, plat: "fanqie", totalHot: 0 };
+
+function api(url){ return fetch(url).then(function(r){ return r.json(); }); }
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" })[c]; }); }
+
+function renderTabs(){
+  var tabs = [["1","2","男频阅读榜"],["1","1","男频新书榜"],["0","2","女频阅读榜"],["0","1","女频新书榜"]];
+  $("#tabs").innerHTML = tabs.map(function(t){
+    var on = (t[0] === S.gender && t[1] === S.rankType) ? " on" : "";
+    return '<div class="tab'+on+'" data-g="'+t[0]+'" data-r="'+t[1]+'">'+t[2]+'</div>';
+  }).join("");
+  $("#tabs").querySelectorAll(".tab").forEach(function(el){
+    el.onclick = function(){ S.gender = el.dataset.g; S.rankType = el.dataset.r; S.categoryId = "0"; S.date = ""; boot(); };
+  });
+}
+
+function renderCats(){
+  var ch = S.cfg.channels, key = S.gender === "1" ? "男频" : "女频";
+  var items = [{ name: "总榜", id: "0" }].concat((ch[key] || []).map(function(g){ return { name: g[0], id: String(g[1]) }; }));
+  $("#catbar").innerHTML = items.map(function(c){
+    var hot = String(c.id) === String(S.categoryId) && S.totalHot ? '<b>'+(S.totalHot/10000).toFixed(1)+'万</b>' : '';
+    return '<div class="c'+(String(c.id) === String(S.categoryId) ? " on" : "")+'" data-id="'+c.id+'">'+esc(c.name)+hot+'</div>';
+  }).join("");
+  $("#catbar").querySelectorAll(".c").forEach(function(el){
+    el.onclick = function(){ S.categoryId = el.dataset.id; S.date = ""; loadTrend(); loadList(); };
+  });
+}
+
+function loadTrend(){
+  var q = "?gender="+S.gender+"&rank_type="+S.rankType+"&category_id="+S.categoryId+(S.date ? "&date="+S.date : "");
+  $("#trend").innerHTML = '<div class="load">读取风向标…</div>';
+  api("/api/novel/trends"+q).then(function(res){
+    var d = res.data || {}, acc = res.access || {};
+    S.history = res.history || [];
+    if(!d.date){ $("#trend").innerHTML = '<div class="load">暂无该榜风向标</div>'; return; }
+    var hot = (d.hotWords || []).slice(0, 8).map(function(h){ return '<span title="'+esc(h.reason||"")+'">'+esc(h.word)+'</span>'; }).join("");
+    var report = d.report || {};
+    var toolkit = d.writingToolkit || {};
+    var groups = [["标题句式","titlePatterns"],["开篇钩子","openingHooks"],["人物弧光","characterArcs"],
+                  ["剧情装置","plotDevices"],["避坑提醒","avoidPitfalls"],["更新策略","updateStrategy"]];
+    var tools = groups.map(function(g){
+      var arr = (toolkit[g[1]] || []).slice(0, 4).map(function(x){ return "<li>"+esc(typeof x === "string" ? x : (x.text || x.title || ""))+"</li>"; }).join("");
+      return '<div class="tool"><h5>'+g[0]+'</h5><ul style="margin:0;padding-left:16px">'+(arr||"<li>—</li>")+'</ul></div>';
+    }).join("");
+    var hist = S.history.map(function(h){
+      return '<option value="'+h.date+'"'+(h.date === (S.date || d.date) ? " selected" : "")+'>'+h.issue+' 期 · '+h.date+'</option>';
+    }).join("");
+    var lock = acc.requiresSubscription && !acc.canExpand
+      ? '<div class="locked">细分榜完整风向标为订阅用户专享 · <b>订阅后可展开</b></div>' : "";
+    $("#trend").innerHTML =
+      '<div class="trend-hd"><h2>今日创作风向标</h2>' +
+        '<select id="histSel">'+(hist || '<option>暂无往期</option>')+'</select>' +
+        '<span style="font-size:12px;color:#6d7b75">最新 '+esc(d.issue)+' 期</span>' +
+        '<span class="spacer" style="flex:1"></span><span style="font-size:12px;color:#9aaba4">生成于 '+esc((d.generatedAt||"").slice(0,16).replace("T"," "))+'</span></div>' +
+      '<div style="font-size:12.5px;color:#8b9a93;margin-top:6px">'+esc(d.genderLabel)+' · '+esc(d.rankTypeLabel)+' · '+esc(d.categoryLabel)+'</div>' +
+      '<div class="hot">'+hot+'</div>' +
+      '<div class="headline">'+esc(report.headline || "")+'</div>' +
+      '<div class="overview">'+esc(report.overview || "")+'</div>' +
+      '<div class="cols">' +
+        '<div class="box"><h4>读者情绪</h4><p>'+esc(report.readerMood || "—")+'</p></div>' +
+        '<div class="box"><h4>赛道机会</h4><p>'+esc(report.topicOpportunity || "—")+'</p></div>' +
+      '</div>' +
+      '<div class="cols" style="margin-top:10px">' +
+        '<div class="box"><h4>赛道趋势</h4><p>'+esc(report.laneTrend || "—")+'</p></div>' +
+        '<div class="box"><h4>商业化建议</h4><p>'+esc(report.commercialAdvice || "—")+'</p></div>' +
+      '</div>' +
+      '<div class="tools">'+tools+'</div>' + lock;
+    var hs = $("#histSel");
+    if(hs) hs.onchange = function(){ S.date = this.value === d.date ? "" : this.value; loadTrend(); };
+  }).catch(function(e){ $("#trend").innerHTML = '<div class="load">风向标读取失败：'+esc(e.message)+'</div>'; });
+}
+
+function loadList(){
+  $("#list").innerHTML = '<div class="load">读取榜单…</div>';
+  var q = "?gender="+S.gender+"&rank_type="+S.rankType+"&category_id="+S.categoryId;
+  api("/api/novel/rank"+q).then(function(res){
+    var ns = res.novels || [];
+    if(!ns.length){ $("#list").innerHTML = '<div class="load">暂无数据</div>'; return; }
+    S.totalHot = ns.reduce(function(a, n){ return a + (n.read_count || 0); }, 0);
+    renderCats();
+    $("#list").innerHTML = ns.map(function(n, i){
+      var rawTags = n.tags || [];
+      if (typeof rawTags === "string") rawTags = rawTags.split(/[,，\s/|]+/).filter(Boolean);
+      if (!rawTags.length && n.category) rawTags = [n.category];
+      var tags = rawTags.slice(0, 2).map(function(t){ return "<span>"+esc(t)+"</span>"; }).join("");
+      return '<div class="item"><div class="no">'+(n.rank || i+1)+'</div>' +
+        (n.cover_image_url ? '<img class="cover" src="'+esc(n.cover_image_url)+'" loading="lazy" alt="">' : '<div class="cover"></div>') +
+        '<div style="min-width:0"><h3>'+esc(n.title)+'</h3>' +
+        '<div class="meta">'+esc(n.author||"佚名")+' · '+(n.status||"")+' · 在读 '+(n.read_count_text||n.read_count||"-")+' · '+((n.word_count||0)/10000).toFixed(1)+' 万字</div>' +
+        '<div class="desc">'+esc(n.description||"")+'</div>' +
+        '<div class="tags">'+tags+'<a class="src" target="_blank" rel="noreferrer" href="https://fanqienovel.com/page/'+esc(n.id)+'">阅读原文</a></div></div></div>';
+    }).join("");
+  }).catch(function(e){ $("#list").innerHTML = '<div class="load">榜单读取失败：'+esc(e.message)+'</div>'; });
+}
+
+var PLATS = [["fanqie","番茄",false],["hongguo","红果",false],["douyin","抖音",false],["kuaishou","快手",false],
+             ["qidian","起点",true],["qimao","七猫",true],["hot","热搜",false]];
+function renderPlats(){
+  $("#plats").innerHTML = PLATS.map(function(p){
+    return '<div class="plat'+(S.plat === p[0] ? " on" : "")+(p[2] ? " ext" : "")+'" data-p="'+p[0]+'">'+p[1]+'</div>';
+  }).join("");
+  $("#plats").querySelectorAll(".plat").forEach(function(el){
+    el.onclick = function(){
+      S.plat = el.dataset.p;
+      if(S.plat !== "fanqie"){
+        $("#trend").innerHTML = '<div class="load">「'+el.textContent.trim()+'」数据源待接：需要该平台的榜单接口（本页结构已就绪，接上适配器即渲染）</div>';
+        $("#list").innerHTML = '';
+        renderPlats();
+        return;
+      }
+      boot();
+    };
+  });
+}
+function boot(){
+  renderPlats(); renderTabs(); renderCats(); loadTrend(); loadList();
+}
+function refreshAll(){
+  api("/api/novel/rank?gender="+S.gender+"&rank_type="+S.rankType+"&category_id="+S.categoryId+"&force=1")
+    .then(function(){ return api("/api/novel/trends?gender="+S.gender+"&rank_type="+S.rankType+"&category_id="+S.categoryId+"&force=1"); })
+    .then(boot);
+}
+
+api("/api/novel/wizard/config").then(function(c){ S.cfg = c; boot(); })
+  .catch(function(){ S.cfg = { channels: {} }; boot(); })
+  .then(function(){ setTimeout(function(){ if(!document.querySelectorAll(".item").length) boot(); }, 600); });
+</script></body></html>

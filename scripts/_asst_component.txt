@@ -1,0 +1,126 @@
+		/* 写作助手挂件：右下角浮动，轻量对话（走 /api/assistant，不带工具循环） */
+		function installAssistant() {
+			if (typeof document === "undefined") return;
+			if (document.querySelector(".nvl-asst")) return;
+
+			const root = document.createElement("div");
+			root.className = "nvl-asst";
+			document.body.appendChild(root);
+
+			let open = false;
+			let busy = false;
+			let history = [];   // [{role, text}]
+
+			const fab = document.createElement("button");
+			fab.className = "nvl-asst__fab";
+			fab.title = "写作助手";
+			fab.textContent = "✦";
+
+			const panel = document.createElement("div");
+			panel.className = "nvl-asst__panel";
+			panel.style.display = "none";
+
+			const head = document.createElement("div");
+			head.className = "nvl-asst__head";
+			const title = document.createElement("span");
+			title.textContent = "✦ 写作助手";
+			const fold = document.createElement("button");
+			fold.className = "nvl-asst__fold";
+			fold.textContent = "—";
+			fold.onclick = function () { setOpen(false); };
+			head.appendChild(title);
+			head.appendChild(fold);
+
+			const msgs = document.createElement("div");
+			msgs.className = "nvl-asst__msgs";
+
+			const inputRow = document.createElement("div");
+			inputRow.className = "nvl-asst__input";
+			const input = document.createElement("textarea");
+			input.className = "nvl-asst__input-ta";
+			input.rows = 1;
+			input.placeholder = "问点什么：这段节奏怎么样 / 那条伏笔该怎么收";
+			const sendBtn = document.createElement("button");
+			sendBtn.className = "nvl-asst__send";
+			sendBtn.textContent = "↑";
+			inputRow.appendChild(input);
+			inputRow.appendChild(sendBtn);
+
+			panel.appendChild(head);
+			panel.appendChild(msgs);
+			panel.appendChild(inputRow);
+
+			function currentBook() {
+				try {
+					const m = (localStorage.getItem(LS_LAST_FILE) || "").match(/^projects\/([^\/]+)\//);
+					return m ? decodeURIComponent(m[1]) : "";
+				} catch (e) { return ""; }
+			}
+
+			function addMsg(role, text) {
+				const d = document.createElement("div");
+				d.className = "nvl-asst__msg nvl-asst__msg--" + role;
+				d.textContent = text;
+				msgs.appendChild(d);
+				msgs.scrollTop = msgs.scrollHeight;
+				return d;
+			}
+
+			function setOpen(v) {
+				open = v;
+				panel.style.display = v ? "flex" : "none";
+				fab.style.display = v ? "none" : "flex";
+				if (v) {
+					if (!history.length) {
+						addMsg("ai", "我是这本书的助手。可以问节奏、伏笔、账目，或者让我看某一章的问题。");
+					}
+					try { input.focus(); } catch (e) { /* ignore */ }
+				}
+			}
+
+			function send() {
+				const text = String(input.value || "").trim();
+				if (!text || busy) return;
+				input.value = "";
+				addMsg("me", text);
+				history.push({ role: "user", text: text });
+				busy = true;
+				const thinking = addMsg("ai", "…");
+				const book = currentBook();
+				fetch(apiBase().replace(/\/+$/, "") + "/api/assistant", {
+					method: "POST",
+					headers: Object.assign({ "Content-Type": "application/json" },
+						(function () { try { return {}; } catch (e) { return {}; } }()) ),
+					body: JSON.stringify({ book: book, message: text })
+				}).then(function (r) { return r.text(); }).then(function (raw) {
+					let data = null;
+					try { data = JSON.parse(raw.split("\n\n")[0].replace(/^data: /, "")); } catch (e2) { /* ignore */ }
+					thinking.remove();
+					if (data && data.type === "done" && data.text) {
+						addMsg("ai", data.text);
+						history.push({ role: "ai", text: data.text });
+					} else if (data && data.error) {
+						addMsg("ai", "出错了：" + data.error);
+					} else {
+						addMsg("ai", "（无回应）");
+					}
+					busy = false;
+				}).catch(function (e) {
+					thinking.remove();
+					addMsg("ai", "网络错误：" + (e && e.message || e));
+					busy = false;
+				});
+			}
+
+			sendBtn.onclick = send;
+			input.addEventListener("keydown", function (e) {
+				if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+			});
+			fab.onclick = function () { setOpen(true); };
+
+			root.appendChild(fab);
+			root.appendChild(panel);
+		}
+		try { installAssistant(); } catch (e) { /* 助手挂载失败不影响主流程 */ }
+
+		/* 设置 → 通用 → 关于与许可：MIT 声明 + 版本 + AI 标识说明 */

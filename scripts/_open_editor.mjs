@@ -1,0 +1,25 @@
+import fs from 'node:fs'
+const list = await (await fetch('http://127.0.0.1:9650/json/list')).json()
+const page = list.find((t) => t.type === 'page')
+const ws = new WebSocket(page.webSocketDebuggerUrl)
+let id = 0; const pending = new Map()
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) } })
+await new Promise((r) => ws.addEventListener('open', r))
+const call = (method, params) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params: params || {} })) })
+await call('Runtime.enable'); await call('Page.enable')
+const ev = async (x) => { const r = await call('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true }); if (r.result && r.result.exceptionDetails) return 'ERR'; return r.result && r.result.result && r.result.result.value }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+console.log('nav buttons =', JSON.stringify(await ev('(function(){return [].slice.call(document.querySelectorAll("button")).map(function(b){return (b.textContent||"").trim()}).filter(function(t){return t && t.length<8}).slice(0,20)})()')))
+// 点码字
+console.log('click =', await ev('(function(){var bs=[].slice.call(document.querySelectorAll("button"));var b=bs.filter(function(x){return (x.textContent||"").trim()==="\u7801\u5b57"})[0];if(!b)return "no";b.click();return "ok"})()'))
+await wait(3000)
+console.log('editor bar =', await ev('document.querySelectorAll(".nvl-editor__bar").length'))
+console.log('chapter items =', await ev('document.querySelectorAll(".nvl-tree__item, .nvl-tree-row, [data-path]").length'))
+// 尝试点一个章节
+console.log('click chapter =', await ev('(function(){var els=[].slice.call(document.querySelectorAll("*")).filter(function(x){var t=(x.textContent||"").trim();return t.indexOf("\u7b2c\u4e00\u7ae0")===0 && x.children.length===0});if(!els.length)return "no-ch";els[0].click();return "clicked:"+els[0].textContent.slice(0,20)})()'))
+await wait(2500)
+console.log('editor bar2 =', await ev('document.querySelectorAll(".nvl-editor__bar").length'))
+console.log('debt =', await ev('document.querySelectorAll(".nvl-debt").length'))
+const shot = await call('Page.captureScreenshot', { format: 'png' })
+if (shot.result && shot.result.data) fs.writeFileSync('D:/NovelApp/_tmp/debt-ui.png', Buffer.from(shot.result.data, 'base64'))
+ws.close(); process.exit(0)

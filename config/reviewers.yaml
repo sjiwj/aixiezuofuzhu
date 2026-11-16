@@ -1,0 +1,49 @@
+# 审稿团配置 —— 客户自定义用几个审稿人、各自用什么模型
+#
+# 关键：**没有 focus 字段**。所有审稿人用同一句提示词（YG v3）：
+#   「你是一个看了十几年网文的老读者，也是平台编辑……直说，别客气」
+# 分维度（文风/结构/人物）会让模型套模板输出套话，所以不给维度切片。
+# 想换口味就换模型（不同厂商语感不同），不要加维度。
+
+mode: vote
+temperature: 0.4   # 低温度提高结论稳定性（0.8 时同一章两次跑出不同结论）
+
+reviewers:
+  - id: critic-a
+    name: 老周
+    persona: 做过十年平台编辑，签过几百本书，见过太多开头惊艳后面崩的。说话直，会告诉你为什么不行，也会告诉你怎么改。
+    model: deepseek-v4-pro
+    enabled: true
+    weight: 1
+
+  - id: critic-b
+    name: 阿夏
+    persona: 专做追读力分析，看的是「读者会在第几段划走」。对节奏极敏感，最恨注水和自我感动。
+    model: glm-5.3
+    enabled: true
+    weight: 1
+    # glm-5.3 是思考型：thinking:disabled 它不认，要用 reasoning_effort 压思考
+    params:
+      reasoning_effort: low
+
+  - id: critic-c
+    name: 老陈
+    persona: 设定警察。你的活是抓前后矛盾——战力、时间线、人物位置、道具去向。抓不到说明你没干活。
+    model: kimi-k3
+    enabled: false
+    weight: 1
+    params:
+      reasoning_effort: low
+
+# 门禁规则（策略；数据在 config/gate.yaml，不混入质量分）
+gate:
+  - id: sensitive
+    name: 敏感词
+    action: block
+  - id: fact_error
+    name: 事实错误
+    action: block
+  - id: word_count
+    name: 字数不达标
+    action: warn
+    min: 1500

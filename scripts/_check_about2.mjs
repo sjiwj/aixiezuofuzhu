@@ -1,0 +1,21 @@
+const list = await (await fetch('http://127.0.0.1:9650/json/list')).json()
+const page = list.find((t) => t.type === 'page')
+const ws = new WebSocket(page.webSocketDebuggerUrl)
+let id = 0; const pending = new Map()
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) } })
+await new Promise((r) => ws.addEventListener('open', r))
+const call = (method, params) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params: params || {} })) })
+await call('Runtime.enable')
+await call('Log.enable').catch(() => {})
+const ev = async (x) => { const r = await call('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true }); if (r.result && r.result.exceptionDetails) return 'ERR:' + JSON.stringify(r.result.exceptionDetails).slice(0,300); return r.result && r.result.result && r.result.result.value }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// 关设置再开
+await ev('(() => { const d=[...document.querySelectorAll("button")].find(b=>b.textContent.trim()==="关闭"); if(d) d.click(); return "closed" })()')
+await wait(600)
+await ev('(() => { const b=[...document.querySelectorAll("button")].find(x=>(x.textContent||"").trim().startsWith("设置")); if(b) b.click(); return "ok" })()')
+await wait(1500)
+console.log('rows =', JSON.stringify(await ev('([...document.querySelectorAll(".nvl-setrow")].map(r=>(r.textContent||"").trim().slice(0,40)))')))
+console.log('errors =', JSON.stringify(await ev('({pt: window.__ptErr || null, last: (window.__NOVELAPP_LAST_ERROR__ || null) })')))
+console.log('consoleTail =', JSON.stringify(await ev('(window.__novelappConsole || []).slice(-8)')))
+ws.close(); process.exit(0)

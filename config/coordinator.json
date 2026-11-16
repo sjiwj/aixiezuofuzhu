@@ -1,0 +1,50 @@
+{
+  "_note": "总指挥配置。所有模型由客户自选，这里只是默认值。",
+  "coordinator": {
+    "model": "deepseek-flash",
+    "endpoint": "https://api.deepseek.com/v1",
+    "api_key": "",
+    "max_steps": 20,
+    "temperature": 0.3
+  },
+  "workers": {
+    "research": {
+      "model": "deepseek-flash",
+      "endpoint": "https://api.deepseek.com/v1",
+      "api_key": ""
+    },
+    "thinking": {
+      "model": "deepseek-flash",
+      "endpoint": "https://api.deepseek.com/v1",
+      "api_key": ""
+    },
+    "writing": {
+      "model": "deepseek-flash",
+      "endpoint": "https://api.deepseek.com/v1",
+      "api_key": ""
+    },
+    "quality": {
+      "model": "deepseek-flash",
+      "endpoint": "https://api.deepseek.com/v1",
+      "api_key": ""
+    }
+  },
+  "agent": {
+    "full_access": true,
+    "read_limit": 20000,
+    "cmd_timeout": 120,
+    "cmd_output_limit": 8000,
+    "assistant_timeout": 150,
+    "subagents": true,
+    "parallel_subagents": false
+  },
+  "gateway": {
+    "enabled": true,
+    "base": "http://127.0.0.1:3000/v1",
+    "downstream_key": "",
+    "fee_rate": 0
+  },
+  "search": {
+    "enabled": false
+  }
+}

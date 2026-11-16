@@ -1,0 +1,67 @@
+# 流水线四层配置 —— 客户全权控制
+#
+# enabled    用不用这一层
+# model      这一层用哪个模型（留空 = 用主模型）
+# thinking   要不要让模型思考（true / false / auto）
+#            true  = 强制开思考，max_tokens 要给够（否则正文被思考吃光）
+#            false = 关闭思考，快但浅
+#            auto  = 不干预，模型自己决定（默认）
+# max_tokens 这一层的输出预算（含思考）
+#
+# 修改后立即生效，不用重启
+
+layers:
+  research:
+    enabled: true
+    label: 研究层
+    description: 拆解参照、发散创意、评估筛选、冲突推演
+    model: deepseek-flash
+    thinking: false        # 查资料不需要深思，要快
+    temperature: 0.7
+    max_tokens: 3000
+
+  thinking:
+    enabled: true
+    label: 思维层
+    description: 结构设计、金手指、力量体系、人物关系
+    model: deepseek-v4-pro
+    thinking: true         # 这一层的任务就是思考，必须开
+    temperature: 0.5
+    max_tokens: 10000      # 思考 + 结论都要装下
+
+  writing:
+    enabled: true
+    label: 写作层
+    description: 按细纲写正文
+    # 写作层用 flash（快、便宜）；要更高质量可改 deepseek-v4-pro 或 kimi-k3
+    # v4-pro + thinking:true 实测：186 秒一章（思考占 8700 token）
+    model: deepseek-flash
+    thinking: false        # flash 本身思考少，关掉更快；要构思质量可改 true
+    temperature: 0.8
+    target_words: 1000     # 本章正文目标字数（客户按自己更新节奏调：2000/3000）
+    stream: true           # 写作层流式输出（false = 走旧的同步路径，一键回滚）
+    max_tokens: 20000      # 思考 + 正文，一章 2000-3000 字中文约 4000 token，留足余量
+
+  quality:
+    enabled: true
+    label: 质检层
+    description: 四关齐（L1 八条 + L2 跨章 + L3 空间 + L4 时间）
+    model: deepseek-flash
+    thinking: false        # 机械检查，不需要思考
+    temperature: 0.1
+    max_tokens: 2000
+
+# 可用模型清单（UI 下拉从这里读，接新模型只加这里）
+models:
+  - id: deepseek-flash
+    label: DeepSeek Flash
+    note: 快，便宜（输入 1 / 输出 2 元每百万），无思考
+  - id: deepseek-v4-pro
+    label: DeepSeek V4 Pro
+    note: 强推理，有思考（输入 4 / 输出 16 元每百万）
+  - id: glm-5.3
+    label: GLM-5.3
+    note: 思考型，慢但稳（输入 4 / 输出 16 元每百万）
+  - id: kimi-k3
+    label: Kimi K3
+    note: 思考型，文笔好（输入 4 / 输出 16 元每百万）

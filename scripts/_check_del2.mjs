@@ -1,0 +1,30 @@
+const list = await (await fetch('http://127.0.0.1:9650/json/list')).json()
+const page = list.find((t) => t.type === 'page')
+const ws = new WebSocket(page.webSocketDebuggerUrl)
+let id = 0; const pending = new Map()
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) } })
+await new Promise((r) => ws.addEventListener('open', r))
+const call = (method, params) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params: params || {} })) })
+await call('Runtime.enable')
+const ev = async (x) => { const r = await call('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true }); if (r.result && r.result.exceptionDetails) return 'ERR:' + JSON.stringify(r.result.exceptionDetails).slice(0,260); return r.result && r.result.result && r.result.result.value }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+const click = (n) => ev('(() => { const b=[...document.querySelectorAll("button")].find(x=>(x.textContent||"").trim().startsWith(' + JSON.stringify(n) + ')); if(!b) return "miss"; b.click(); return "ok" })()')
+
+// 门禁展开
+console.log('审稿 =', await click('审稿')); await wait(1200)
+console.log('gate bar =', await ev('(() => { const b=document.querySelector(".nvl-gate__bar"); if(!b) return "miss"; b.click(); return "ok" })()'))
+await wait(700)
+const g = String(await ev('(document.body.innerText||"").replace(/\\s+/g," ")'))
+console.log('GATE =', JSON.stringify(g.slice(80, 640)))
+console.log('objectObject =', g.includes('[object Object]'))
+
+// 删除章节
+console.log('项目 =', await click('项目')); await wait(900)
+console.log('del click =', await ev('(() => { const row=[...document.querySelectorAll(".nvl-tree__chapter")].find(e=>(e.textContent||"").includes("删除测试")); if(!row) return "no-row"; const b=row.querySelector("button"); if(!b) return "no-btn"; b.click(); return "ok" })()'))
+await wait(700)
+console.log('dialog =', await ev('(() => { const d=document.querySelector("[role=dialog]"); return d ? (d.textContent||"").trim().slice(0,60) : "no-dialog" })()'))
+console.log('fill+ok =', await ev('(() => { const d=document.querySelector("[role=dialog]"); if(!d) return "no-dialog"; const i=d.querySelector("input"); i.value="删除"; i.dispatchEvent(new Event("input",{bubbles:true})); const ok=[...d.querySelectorAll("button")].find(b=>(b.textContent||"").trim()==="确定"); ok.click(); return "ok" })()'))
+await wait(1800)
+console.log('AFTER =', JSON.stringify(String(await ev('(document.body.innerText||"").replace(/\\s+/g," ").slice(0,220)'))))
+console.log('chapters =', JSON.stringify(await ev('([...document.querySelectorAll(".nvl-tree__chapter")].map(e=>(e.textContent||"").trim()))')))
+ws.close(); process.exit(0)
