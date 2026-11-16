@@ -54,6 +54,9 @@ core/design-skeleton.html
 docs/legal/绕过与传播风险.md
 docs/legal/文案改动清单-v0.md
 
+# 自测产物（可重生成）
+repro/
+repro_out/
 # 运行时数据（用户自己的书与账本）
 data/
 !data/config/ads.json
