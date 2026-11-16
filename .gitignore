@@ -79,3 +79,14 @@ _diag*.ps1
 # 环境与机器相关
 .env
 *.local.json
+
+# 根目录临时件（2026-11-17 发布前整理）
+/_*.ps1
+/_*.json
+/_*.txt
+/_*.log
+/_cache/
+/_learn/
+/_verify/
+/_archive/
+DESIGN.md
