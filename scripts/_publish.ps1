@@ -14,8 +14,9 @@ $fail = 0
 function Chk($name, $ok, $detail) { if ($ok) { "PASS  $name  | $detail" } else { "FAIL  $name  | $detail"; $script:fail++ } }
 
 # ---------- 1. 工作区必须干净（只允许已提交内容）----------
-$dirty = @(git status --porcelain)
-Chk 'git:clean' ($dirty.Count -eq 0) "未提交改动 $($dirty.Count) 个（有就先 commit，避免带上未审内容）"
+$staged = @(git diff --cached --name-only)
+$modified = @(git diff --name-only)
+Chk 'git:clean-index' (($staged.Count + $modified.Count) -eq 0) "已暂存 $($staged.Count) / 已改未暂存 $($modified.Count)（未跟踪的临时件不计，它们本来就不进提交）"
 
 # ---------- 2. 提交里不许有小说 / 密钥 / 禁区 ----------
 $novel = @(git grep -I -n -E '<书名>|沈砚|刘家庄|具状人' HEAD -- . ':(exclude)scripts/_publish.ps1' 2>$null)
