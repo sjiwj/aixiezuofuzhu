@@ -214,3 +214,11 @@ curl.exe -s -o NUL -w "%{http_code}`n" -H "Authorization: Bearer <sk-key>" http:
 netstat -ano | findstr :8770
 $env:NOVELAPP_PORT = '8799'   # 换个端口，不用改代码
 ```
+
+## 反馈
+
+- 报 bug：<https://github.com/sjiwj/jy/issues/new/choose>（模板会要求贴复现命令 / 报错原文 / 环境版本）
+- 说某章读不下去：选「质量反馈」，贴原句 + `review_panel.metrics` 输出
+- 想看改了什么：<https://github.com/sjiwj/jy/releases>
+
+反馈都收在 GitHub Issues，公开可见；本机不落任何用户反馈数据。
