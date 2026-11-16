@@ -1822,7 +1822,7 @@ function renderBalanceChip(){
     ? '本月估算成本 ' + fmtMoney(accountState.balance, 2)
     : '余额 ' + fmtMoney(accountState.balance, 2);
   el.title = (low ? '本月估算成本' : '本月估算成本 ' + fmtMoney(accountState.balance, 2) + '。')
-    + '本项目不收服务费。点击查看本月用量与最近 20 笔明细（估算）。';
+    + '没有服务费。点这里看本月用量与最近 20 笔明细（估算）。';
 }
 function renderBalancePanel(){
   $('bpMock').hidden = !accountState.mock;
@@ -2065,12 +2065,12 @@ document.addEventListener('click', e => {
       }
     });
     if (unknown === KEYS.length) {
-      chip('状态未知', '暂时读不到功能自检信息，入口仍可点');
+      chip('状态未知', '暂时读不到功能状态，入口仍可点');
     } else if (unknown) {
-      chip('未知 ' + unknown, '功能自检信息不完整，' + unknown + ' 项未上报');
+      chip('未知 ' + unknown, '功能状态信息不完整，' + unknown + ' 项没读到');
     } else {
-      chip('自检：可用 ' + wired + ' · 基础 ' + uiOnly + ' · 待完善 ' + missing,
-           '完整可用 ' + wired + ' 项 · 基础可用 ' + uiOnly + ' 项 · 待完善 ' + missing + ' 项');
+      chip('功能状态：' + wired + ' 项可用 · ' + uiOnly + ' 项基础 · ' + missing + ' 项待完善',
+           '点左边灰色项可看说明：基础=能用但界面简单，待完善=目前用文件方式编辑');
     }
   }
 
