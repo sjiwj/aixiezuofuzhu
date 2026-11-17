@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## 1.0.2 — 2026-11-17
+
+开箱即用版。两条主线：**新用户不再需要自建网关**，以及把「三循环四保险」从模板落成代码。
+
+### 修复
+
+- **首次启动不建数据目录**（issue #1，来自真实反馈）：`serve()` 启动即创建 `data`、`data/projects`、`data/config`。此前要等用户点「新建项目」才建，与 README「首次会建数据目录」不符。
+- **出厂默认不再是「走网关」**：仓库里的 `config/coordinator.json` 原来带 `gateway.enabled: true`，所有下载者继承它——不自己搭 3000 端口就写不了字。现在默认 `false`，打开设置填自己的 key 即可写作。
+- **用户配置不再落进代码仓库**：`load_cfg()` 改为数据目录优先（`data/config/coordinator.json`），写配置永远写数据目录。此前改设置会改到仓库里那份，`git status` 变脏、下次 pull 冲突。
+- **`triage.py` 认「期望 vs 实际」型缺陷**：原来 `repro_ready` 只认 `Traceback` / `HTTP 4xx`，像 issue #1 这种「没有报错、只是行为与文档不符」的缺陷一律判成 `human`。现在期望/实际成对出现、或正文含输出块，也算有证据。
+
+### 新增（三循环四保险，可独立验证）
+
+- **写前粗筛 `core/precheck_input.py`**（第 2 保险）：调模型之前拦住注定写不好的输入——章号非 3 位、找不到本章大纲、占位残留（`{topic}` / `TODO` / `待补` / 空括号）。软缺（一句话章纲、分场块不全、覆盖定稿）只提示不阻；`force=true` 可越过。
+- **写盘红线 `core/redline.py`**（第 3 保险）：隐藏路径（`.stages.json` / `.layers/` / `.trash/`）一律拒；已定稿章节被覆盖或被删需 `force=true`。此前能从 Web 写接口直接改 `.stages.json`，把定稿改回 draft。
+- **任务队列 `core/task_queue.py`**（任务循环）：`GET /api/queue` 出待办全表（章号 / 状态 / 有无章纲 / 是否待修 / 分数与理由），`POST /api/queue/next` 给「下一个该处理哪章」，跳过定稿、不自动调模型。分数可解释：错题本 +100、有章纲 +40、有正文可续 +20、有章纲无正文 +10、已定稿 −50。
+- **发布前总检 `scripts/_pre_publish_check.py`**：密钥形态、`C:\Users\<名>` 用户目录、客户统计、具体书名、fixtures 正文、凭据文件、`.gitignore` 覆盖，一次查完；带 NFKC + URL 解码，全角与 `%2D%2Dbook` 写法也能命中。
+- **pre-push 红线 hook `.githooks/pre-push`**：对 github.com 的推送强制跑总检，不通过即阻断。安装：`git config core.hooksPath .githooks`。
+- **issue 关单写错题本 `scripts/_issue_recorder.py`**：同类根因累计 3 次，`loop_log.proposals()` 给出「升级为硬门禁」提案。
+
+### 文档
+
+- README「模型怎么接」改为「直连厂商（默认）/ 自建网关（可选）」；附录 B 重写——原文假定人人跑网关，且写了作者本机路径。
+- 新增 `issues/REQ-purge-old-commits.md`（旧 commit 清除请求模板）。
+
+### 验证
+
+12 个验收脚本全 PASS：`_poc_n1n2` 14/14、`regression_auth` 8/8、`_verify_redline` 11/11、`_verify_precheck_input` 12/12、`_verify_queue` 13/13，以及 `_verify_triage`、`_verify_entries_api`、`_verify_err_msgs`、`_verify_no_private_data`、`_repro` ×3、`_smoke_entries`、`_check_keys`。
+
 ## 1.0.1 — 2026-11-17
 
 安全修复版。只动入口防护与版本号，写作逻辑、API 契约、界面操作流程都没变。
