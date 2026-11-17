@@ -93,3 +93,15 @@ _diag*.ps1
 /_verify/
 /_archive/
 DESIGN.md
+
+# 本机私有产物与未发布资产（2026-11-17 补）
+# 此前这些目录只是「恰好为空/未跟踪」才没进仓库；只要跑一次 git add -A，
+# samples/ 里的章节正文和 reports/ 里的章节分析就会被推上去。默认全部拦住，
+# 需要发布某一项时显式删除对应行。
+samples/
+reports/
+preset-data/
+separate/
+assets/
+skills/
+plugin/
