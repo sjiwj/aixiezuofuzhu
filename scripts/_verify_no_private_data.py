@@ -62,6 +62,8 @@ def main():
     for f in files:
         if f.lower().endswith(BINARY):
             continue
+        if f == 'scripts/_verify_no_private_data.py':
+            continue                      # 本文件含检测用正则，跳过自身
         body = git('show', '%s:%s' % (rev, f))
         if not body:
             continue
