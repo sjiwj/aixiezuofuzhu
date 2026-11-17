@@ -27,7 +27,7 @@
 |---|---|---|
 | D1 | 发 GitHub Release 1.0.1（正文用 `release/1.0.1.md`）；仓库 README 保持现状 | Release 页面可见 1.0.1，含两个高危的说明 |
 | D1 | 知乎首帖 | `release/posts/zhihu-01.md` 发布，带四组对照表 |
-| D2 | 小红书首帖（7 图） | `release/posts/xiaohongshu-01.md` 发布，正文含「GitHub 搜 sjiwj/jy」 |
+| D2 | 小红书首帖（7 图） | `release/posts/xiaohongshu-01.md` 发布，正文含「GitHub 搜 sjiwj/aixiezuofuzhu」 |
 | D3 | B站视频 / 专栏 | `release/posts/bilibili-01.md` 按分镜录制，3 分 10 秒 |
 
 三渠道不同稿：知乎吃数据、小红书吃痛点、B站吃节奏。**同一篇稿子三处发，等于只发了一处。**

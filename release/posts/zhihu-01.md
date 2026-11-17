@@ -75,7 +75,7 @@ prompt_chars = 2,795     ← 喂进去的
 
 做这套东西的过程我整理成了一个本地工作台：稿子在你自己的电脑上，模型用你自己的 key，开源免费、没有订阅也没有按章计费。
 
-- 仓库：https://github.com/sjiwj/jy
+- 仓库：https://github.com/sjiwj/aixiezuofuzhu
 - 起点：README 的「三步起壳」，Python 3.13+，`pip install pywebview pythonnet cryptography`
 - 九个入口：书架 / 开书 / 写 / 大纲 / 设定库 / 拆书 / 质检 / 文风 / 账单
 

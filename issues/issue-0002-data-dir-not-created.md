@@ -1,6 +1,6 @@
 # [bug] 首次启动不会创建数据目录，与 README「首次会建数据目录」不符
 
-> GitHub issue #1  https://github.com/sjiwj/jy/issues/1
+> GitHub issue #1  https://github.com/sjiwj/aixiezuofuzhu/issues/1
 
 ## 环境
 

@@ -115,6 +115,6 @@ prompt_chars = 2,795
 
 ## 置顶评论
 
-> 仓库：https://github.com/sjiwj/jy
+> 仓库：https://github.com/sjiwj/aixiezuofuzhu
 > 所有数字在 README「它凭什么」，方法也是公开的。你拿自己一章去复算大概率对不上——模型、设定、语料都不同，对不上才有讨论空间。
 > 想直接看代码的：`scripts\_verify_err_msgs.py` 和 `scripts\_poc_n1n2.py` 是两个能直接跑的脚本（后者是安全自测）。

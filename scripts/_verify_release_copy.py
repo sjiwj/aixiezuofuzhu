@@ -37,9 +37,9 @@ CODE_ANCHORS = [
 ]
 
 POST_REQUIREMENTS = {
-    'zhihu-01.md': ['结论', '0.043', '3418', 'github.com/sjiwj/jy', '标签'],
-    'xiaohongshu-01.md': ['标题', '0.043', '0.00', '标签', 'sjiwj/jy'],
-    'bilibili-01.md': ['口播', '分镜', '0.043', '0.178', 'github.com/sjiwj/jy'],
+    'zhihu-01.md': ['结论', '0.043', '3418', 'github.com/sjiwj/aixiezuofuzhu', '标签'],
+    'xiaohongshu-01.md': ['标题', '0.043', '0.00', '标签', 'sjiwj/aixiezuofuzhu'],
+    'bilibili-01.md': ['口播', '分镜', '0.043', '0.178', 'github.com/sjiwj/aixiezuofuzhu'],
 }
 
 
@@ -57,13 +57,13 @@ def main():
             bad += 1
         print('%s  %s%s' % ('PASS' if ok else 'FAIL', name, ('  ' + detail) if detail else ''))
 
-    # A 版本
+    # A 版本（不硬编码版本号：写死一次就得跟着改一次，断言本身变成负担）
     version = read(os.path.join(ROOT, 'VERSION')).strip()
-    check('A VERSION == 1.0.1', version == '1.0.1', 'got=%s' % version)
-    rel_path = os.path.join(RELEASE, '1.0.1.md')
+    check('A VERSION 形如 x.y.z', bool(re.match(r'^\d+\.\d+\.\d+$', version)), 'got=%s' % version)
+    rel_path = os.path.join(RELEASE, version + '.md')
     check('A Release 说明存在', os.path.isfile(rel_path), rel_path)
     rel = read(rel_path) if os.path.isfile(rel_path) else ''
-    check('A 标题写 1.0.1', 'v1.0.1' in rel or '1.0.1' in rel)
+    check('A 标题写当前版本', ('v' + version) in rel or version in rel)
 
     # B 指标溯源：README + CHANGELOG + 已有文稿（2795/3418 这两个数出自 posts/01 的真实记录）
     corpus = (read(os.path.join(ROOT, 'README.md')) + read(os.path.join(ROOT, 'CHANGELOG.md'))
@@ -100,8 +100,15 @@ def main():
         check('C 代码里有 %s::%s' % (path, needle), ok)
 
     # C' Release 说明提到的关键行为词，必须在文案里出现（防止说明漏项）
+    # C 技术要点：对「全部发布说明」累计检查，而不是只查当前版本。
+    # 理由：纯许可变更的版本（如 1.0.3）不该被要求复述 Host/Origin 这些术语；
+    # 但这些要点必须留在某一版说明里，不能因为换了版本就丢。
+    pool = ''
+    for name in sorted(os.listdir(RELEASE)):
+        if name.endswith('.md'):
+            pool += read(os.path.join(RELEASE, name)) + '\n'
     for word in ['Host', 'Origin', 'shipped_stale', 'NOVELAPP_ALLOW_HOSTS', 'force=true']:
-        check('C Release 说明覆盖 %s' % word, word in rel)
+        check('C 发布说明累计覆盖 %s' % word, word in pool)
 
     # D 地址一致
     remote = subprocess.run(['git', '-C', ROOT, 'remote', 'get-url', 'origin'],
@@ -109,8 +116,8 @@ def main():
     remote_norm = re.sub(r'\.git$', '', remote)
     check('D 仓库地址一致', remote_norm and remote_norm in all_copy,
           'remote=%s' % remote_norm)
-    # D 地址一致（小红书不给外链，用「GitHub 搜 sjiwj/jy」）
-    check('D 小红书给出可检索的仓库名', 'sjiwj/jy' in posts.get('xiaohongshu-01.md', ''))
+    # D 地址一致（小红书不给外链，用「GitHub 搜 sjiwj/aixiezuofuzhu」）
+    check('D 小红书给出可检索的仓库名', 'sjiwj/aixiezuofuzhu' in posts.get('xiaohongshu-01.md', ''))
 
     # F 12 周判据可算、可落盘
     plan_path = os.path.join(RELEASE, 'plan-12w.md')

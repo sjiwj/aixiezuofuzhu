@@ -12,9 +12,9 @@
 ## 已验证仍可达（提交时附上）
 
 ```text
-GET https://api.github.com/repos/sjiwj/jy/commits/144ad4d          -> 200
-GET https://api.github.com/repos/sjiwj/jy/commits/1a66b33          -> 200
-GET https://codeload.github.com/sjiwj/jy/tar.gz/144ad4d            -> 200
+GET https://api.github.com/repos/sjiwj/aixiezuofuzhu/commits/144ad4d          -> 200
+GET https://api.github.com/repos/sjiwj/aixiezuofuzhu/commits/1a66b33          -> 200
+GET https://codeload.github.com/sjiwj/aixiezuofuzhu/tar.gz/144ad4d            -> 200
 ```
 
 ## 英文正文（直接粘进表单）
@@ -22,7 +22,7 @@ GET https://codeload.github.com/sjiwj/jy/tar.gz/144ad4d            -> 200
 ```text
 Subject: Purge unreachable commits that contain private customer novel text
 
-Repository: https://github.com/sjiwj/jy (public, 0 forks)
+Repository: https://github.com/sjiwj/aixiezuofuzhu (public, 0 forks)
 
 What happened
 Between 2026-11-17 03:10 and 13:59 (+08:00) the repository history contained
@@ -62,9 +62,9 @@ purge cached objects and cached archives for this repository:
   a04fb972fe98cd2f87031fd7dd763027c2d54f9c
 
 Evidence they are still served:
-  GET /repos/sjiwj/jy/commits/144ad4d                  -> 200
-  GET /repos/sjiwj/jy/commits/1a66b33                  -> 200
-  https://codeload.github.com/sjiwj/jy/tar.gz/144ad4d  -> 200
+  GET /repos/sjiwj/aixiezuofuzhu/commits/144ad4d                  -> 200
+  GET /repos/sjiwj/aixiezuofuzhu/commits/1a66b33                  -> 200
+  https://codeload.github.com/sjiwj/aixiezuofuzhu/tar.gz/144ad4d  -> 200
 
 Additional context
   - forks_count is 0, so no fork keeps a copy of the old history.
