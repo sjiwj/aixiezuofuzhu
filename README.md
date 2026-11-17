@@ -107,8 +107,8 @@ python -X utf8 tools\prompt_render.py --book "projects\<书名>" --chapter 2 --s
 ## 许可与商标
 
 - 代码：**Apache License 2.0**（`LICENSE` 全文；`NOTICE` 为版权与第三方说明）。
-- **名称与 Logo 不随代码授权**（Apache-2.0 §6）：可以 fork、可以改、可以商用，
-  但不要用「小说创作工作台 / NovelApp」的名字与图标去分发，也不要暗示作者背书。
+- **名称与 Logo 不随代码授权**（Apache-2.0 §6）：可以 fork、可以改、不可以商用，
+  不要暗示作者背书。
 - 随包第三方组件各受其许可证约束，见 `docs/legal/third-party-notices-v0.md`。
 
 ## 贡献
