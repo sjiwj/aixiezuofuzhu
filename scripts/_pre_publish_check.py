@@ -19,6 +19,8 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
+from urllib.parse import unquote
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -55,6 +57,23 @@ def git(*args):
                           capture_output=True, text=True).stdout
 
 
+
+def normalize_variants(text):
+    """返回若干等价视图：原文、NFKC 归一化、URL 解码后再 NFKC。
+    模板缺陷之一就是「占位符正则可被全角/NFKC 绕过」，这里先把变体都摆出来。"""
+    out = [text]
+    try:
+        n = unicodedata.normalize('NFKC', text)
+        if n != text:
+            out.append(n)
+        u = unquote(n, errors='replace')
+        if u != n:
+            out.append(u)
+    except Exception:
+        pass
+    return out
+
+
 def allowed(name):
     return any(a in name for a in ALLOW)
 
@@ -79,21 +98,22 @@ def check_rev(rev, label):
         body = git('show', '%s:%s' % (rev, f))
         if not body:
             continue
+        variants = normalize_variants(body)
         for pat, what in SECRETS:
-            m = re.search(pat, body)
+            m = next((x for v in variants for x in [re.search(pat, v)] if x), None)
             if m:
                 issues.append(('SECRET', f, '%s: %s…' % (what, m.group(0)[:10])))
         for pat, what in LOCAL_PATHS:
-            m = re.search(pat, body)
+            m = next((x for v in variants for x in [re.search(pat, v)] if x), None)
             if m:
                 issues.append(('LOCALPATH', f, '%s: %s' % (what, m.group(0)[:24])))
-        m = re.search(r'客户《([^》]{0,30})》', body)
+        m = next((x for v in variants for x in [re.search(r'客户《([^》]{0,30})》', v)] if x), None)
         if m and not allowed(m.group(1)):
             issues.append(('CUSTOMER', f, m.group(0)))
-        m = re.search(r'projects/(' + CJK_NAME + r')/', body)
+        m = next((x for v in variants for x in [re.search(r'projects/(' + CJK_NAME + r')/', v)] if x), None)
         if m and not allowed(m.group(1)):
             issues.append(('PROJECT', f, m.group(0)))
-        m = re.search(r'--book\s+["\']?(' + CJK_NAME + r')', body)
+        m = next((x for v in variants for x in [re.search(r'--book\s+["\']?(' + CJK_NAME + r')', v)] if x), None)
         if m and not allowed(m.group(1)):
             issues.append(('PROJECT', f, '--book ' + m.group(1)))
         if f.startswith('scripts/fixtures/') and f.endswith('.md') and '示例' not in body:

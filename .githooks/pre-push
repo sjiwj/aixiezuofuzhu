@@ -1,0 +1,30 @@
+#!/bin/sh
+# 推送前红线：对 github.com 的推送，强制跑发布前总检；任何 FAIL 直接阻断。
+#
+# 这是「三循环四保险」里被判「改造接」的那一件：
+#   模板原版 DANGER_ACTIONS 含 push，会把正常发版也拦下来；
+#   这里改成按目标仓库分流 —— 只拦 github.com，本地/临时远端放行。
+#
+# 安装（一次性）：git config core.hooksPath .githooks
+# 跳过（不推荐）：git push --no-verify
+
+remote="$1"
+url="$2"
+
+case "$url" in
+  *github.com*) ;;
+  *) exit 0 ;;
+esac
+
+rev=$(git rev-parse HEAD 2>/dev/null) || exit 0
+
+if ! python scripts/_pre_publish_check.py --rev "$rev"; then
+  echo ""
+  echo "=================================================================="
+  echo " [pre-push] 发布前总检未通过，推送已阻断。"
+  echo " 修完再推。确需跳过：git push --no-verify（跳过会记在终端历史里）"
+  echo "=================================================================="
+  exit 1
+fi
+
+exit 0
