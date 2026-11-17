@@ -33,6 +33,7 @@ ROOT = _resolve_root()
 if not getattr(sys, 'frozen', False):
     sys.path.insert(0, os.path.join(ROOT, 'core'))
 import coordinator as CO
+import precheck_input                    # 第 2 保险：写前粗筛（区别于 precheck 的写后机检）
 from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 import yamlite
 import reviewers as RV
@@ -3795,6 +3796,20 @@ class H(BaseHTTPRequestHandler):
                 return
         if not prompt:
             prompt = '写第 %s 章正文。' % ch
+
+        # 第 2 保险：便宜粗筛（纯本地规则，零模型调用）—— 脏输入不进贵模型
+        try:
+            _stage_now = ST.get_stage(book, ch)
+        except Exception:
+            _stage_now = ''
+        _screen = precheck_input.screen_write(book, chapter, prompt, mode, root=PROJECTS,
+                                        force=bool(data.get('force')), stage=_stage_now)
+        if not _screen['ok']:
+            self._json({'ok': False,
+                        'error': '前置检查未通过：' + _screen['blocked'][0]['reason'],
+                        'screen': _screen,
+                        'hint': '按 screen.blocked 补全后再写；确实要写就带 force=true'}, 400)
+            return
 
         # 现有章节文件（append 要用；replace 也会覆盖它，写盘前会备份）
         fname = resolve_chapter_file(book, ch)
