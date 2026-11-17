@@ -48,9 +48,19 @@ def classify(text):
 
 
 def repro_ready(text):
-    low = (text or '').lower()
+    """「命令 + 证据 + 版本」三样齐才算可自动复现。
+
+    证据不只指报错：行为不符的 bug 往往没有 Traceback，只有「期望 vs 实际」
+    和一段输出块。只认报错会把这一类全判成 human（issue #1 实测踩到）。
+    """
+    text = text or ''
+    low = text.lower()
     has_cmd = any(k in low for k in REPRO_KEYS)
     has_err = bool(re.search(r'(traceback|http\s*\d{3}|error|异常|报错)', low))
+    if not has_err:
+        expect_actual = bool(re.search(r'(期望|expected)', low)) and bool(re.search(r'(实际|actual)', low))
+        has_output_block = '```' in text
+        has_err = expect_actual or has_output_block
     has_ver = bool(re.search(r'(python\s*3|version|版本|windows\s*\d+|win10|win11)', low))
     missing = []
     if not has_cmd:

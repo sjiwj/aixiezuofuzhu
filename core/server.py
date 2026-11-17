@@ -5865,6 +5865,12 @@ def _agent_loop(user_input, stage_target=None, system_prefix=None):
 
 def serve(port=8770, open_browser=True):
     """起服务并阻塞。桌面壳可在独立线程里调用它。"""
+    # 首次启动就把数据目录建出来（issue #1：README 承诺过，之前要等新建项目才建）
+    for _d in (PROJECTS, os.path.join(DATA_ROOT, 'config')):
+        try:
+            os.makedirs(_d, exist_ok=True)
+        except OSError as e:
+            print('数据目录创建失败（%s）：%s' % (_d, e))
     srv = ThreadingHTTPServer(('127.0.0.1', port), H)
     print(f'服务已启动: http://127.0.0.1:{port}')
     print(f'项目根目录: {ROOT}')
