@@ -34,6 +34,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coordinator as CO
+from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 
 HIST_DIR = '.history'
 CHAPTERS = '章节'
@@ -208,7 +209,7 @@ def snapshot(book, chapter, reason='manual'):
         _prune_dir(bdir, ch, DEFAULT_KEEP)
         return meta
     except Exception as e:
-        return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        return {'ok': False, 'error': report(e)}
 
 
 def snapshot_path(rel_or_abs, reason='revise'):
@@ -242,7 +243,7 @@ def snapshot_path(rel_or_abs, reason='revise'):
         _prune_dir(bdir, ch, DEFAULT_KEEP)
         return meta
     except Exception as e:
-        return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        return {'ok': False, 'error': report(e)}
 
 
 def _write_version(bdir, ch, text, reason, src_name=''):

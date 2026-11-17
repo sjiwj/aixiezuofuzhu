@@ -24,6 +24,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coordinator as CO
+from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 
 MAX_CHARS = 6000          # 只判前 6000 字（单次调用成本很低，再长没有收益）
 MIN_CHARS = 80            # 短于这个长度，特征不够，判了也是猜
@@ -244,14 +245,14 @@ def detect(text, title=''):
                 resp = CO.chat(cfg2, messages)
                 model = model or cfg2.get('model') or ''
             except Exception as e2:
-                return _fail('%s: %s' % (type(e2).__name__, str(e2)[:160]))
+                return _fail(report(e2))
         else:
-            return _fail('%s: %s' % (type(e).__name__, str(e)[:160]))
+            return _fail(report(e))
     try:
         model = str(resp.get('model') or model)
         out_text = CO._extract_content(resp) or ''
     except Exception as e:
-        return _fail('%s: %s' % (type(e).__name__, str(e)[:160]))
+        return _fail(report(e))
     if not out_text.strip():
         return _fail('模型没有输出（可能是 max_tokens 被思考吃光）')
 
@@ -549,14 +550,14 @@ def suggest(text, title='', focus=None):
                 resp = CO.chat(cfg2, messages)
                 model = model or cfg2.get('model') or ''
             except Exception as e2:
-                return _fail('%s: %s' % (type(e2).__name__, str(e2)[:160]))
+                return _fail(report(e2))
         else:
-            return _fail('%s: %s' % (type(e).__name__, str(e)[:160]))
+            return _fail(report(e))
     try:
         model = str(resp.get('model') or model)
         out_text = CO._extract_content(resp) or ''
     except Exception as e:
-        return _fail('%s: %s' % (type(e).__name__, str(e)[:160]))
+        return _fail(report(e))
     if not out_text.strip():
         return _fail('模型没有输出（可能是 max_tokens 被思考吃光）')
 

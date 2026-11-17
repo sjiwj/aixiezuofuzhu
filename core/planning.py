@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 
 # 13 步定义：(编号, 名字, 必需?, 判断问题, 产出文件名)
 # 顺序照文档 §六：① 发散 → ② 评估 → ③ 落地 →【按需 8 步】→ ④ 推演冲突 → ⑫ 结构
@@ -733,7 +734,7 @@ def ask_step(book, sid, extra=''):
         ])
         text = CO.sanitize_worker_text(CO._extract_content(resp) or '')
     except Exception as e:
-        return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        return {'ok': False, 'error': report(e)}
     if not text.strip():
         return {'ok': False, 'error': '模型没有输出'}
     return {'ok': True, 'text': text, 'model': model, 'chars': len(text)}

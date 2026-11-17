@@ -17,6 +17,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coordinator as CO
+from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 import update_state as US
 
 BT = chr(96)
@@ -251,7 +252,7 @@ def run(chapter_path, book, dry=True, model='deepseek-flash'):
             res = fn(*arg)
         except Exception as e:
             res = {'ledger': arg[0] if isinstance(arg[0], str) else '?', 'ok': False,
-                   'error': '%s: %s' % (type(e).__name__, e)}
+                   'error': report(e)}
         results.append(apply_result(res, book, dry))
     return results
 
@@ -269,7 +270,7 @@ def run_l1_dedup(book, chapter_no):
                 'merge': rep.get('merge', []), 'skip': len(rep.get('skip', [])),
                 'sidecar': res.get('sidecar')}
     except Exception as e:
-        return {'error': '%s: %s' % (type(e).__name__, e)}
+        return {'error': report(e)}
 
 
 def refresh_index_after_write(book):
@@ -280,7 +281,7 @@ def refresh_index_after_write(book):
         idx = MI.open_index(book, refresh=True)
         return {'revision': idx.revision}
     except Exception as e:
-        return {'error': '%s: %s' % (type(e).__name__, e)}
+        return {'error': report(e)}
 
 
 def main():

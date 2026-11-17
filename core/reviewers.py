@@ -22,6 +22,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coordinator as CO
+from errors import human, report, log     # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 import yamlite
 
 REVIEWERS_PATH = CO.REVIEWERS_PATH
@@ -119,7 +120,7 @@ def load_config(force=False):
         if not isinstance(data, dict):
             raise ValueError('顶层不是映射')
     except Exception as e:
-        _CFG.update({'sig': sig, 'error': '%s: %s' % (type(e).__name__, e)})
+        _CFG.update({'sig': sig, 'error': report(e)})
         return _CFG['data'] or {'mode': 'vote', 'reviewers': [], 'gate': []}
     _CFG.update({'sig': sig, 'data': data, 'error': None})
     return data
@@ -143,7 +144,7 @@ def load_gate_data(force=False):
         if not isinstance(data, dict):
             raise ValueError('顶层不是映射')
     except Exception as e:
-        _GATE.update({'sig': sig, 'error': '%s: %s' % (type(e).__name__, e)})
+        _GATE.update({'sig': sig, 'error': report(e)})
         return _GATE['data'] or {}
     _GATE.update({'sig': sig, 'data': data, 'error': None})
     return data
@@ -467,7 +468,8 @@ def run_reviewer(reviewer, chapter_text, chapter_rel, max_tokens=None, timeout=2
         if 'insufficient_user_quota' in detail:
             res['error'] = '余额不足：网关返回 insufficient_user_quota，请充值后重试'
         else:
-            res['error'] = '%s: %s' % (type(e).__name__, detail or e)
+            log(e, 'reviewer-worker: ' + str(detail or '')[:300])
+            res['error'] = human(e)
         res['ms'] = int((time.time() - t0) * 1000)
         return res
 
@@ -742,7 +744,7 @@ def iter_team(chapter_text, chapter_rel, mode=None, only=None, max_tokens=None,
                        'model': r.get('model'), 'weight': r.get('weight', 1),
                        'verdict': 'inconclusive', 'verdict_label': '未判定', 'text': '',
                        'tokens': 0, 'ok': False,
-                       'error': '%s: %s' % (type(e).__name__, e), 'ms': 0}
+                       'error': report(e), 'ms': 0}
             results.append(res)
             ev = {'type': 'reviewer_done'}
             ev.update(res)
@@ -1010,7 +1012,7 @@ def extract_consensus(results, cfg=None, model=None):
         resp = CO.chat(call_cfg, [{'role': 'user', 'content': prompt}])
         raw = CO._extract_content(resp) or ''
     except Exception as e:
-        return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e), 'must_fix': [], 'pending': [], 'ignored': [], 'reviewers': len(opinions)}
+        return {'ok': False, 'error': report(e), 'must_fix': [], 'pending': [], 'ignored': [], 'reviewers': len(opinions)}
 
     m = re.search(r'\{[\s\S]*\}', raw)
     if not m:

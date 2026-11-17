@@ -580,6 +580,39 @@ button.balchip.low:hover{background:#463d24;border-color:#7a6630}
 <div class="toasts" id="toasts"></div>
 
 <script>
+/* v1.0.1 入口防护：页面持有请求令牌，所有 /api/ 请求自动带上 */
+(function(){
+  var TK = '__NOVELAPP_TOKEN__';
+  window.__NVL_TOKEN__ = TK;
+  if (typeof window.fetch !== 'function') return;
+  var raw = window.fetch;
+  window.fetch = function(input, init){
+    try {
+      var url = (typeof input === 'string') ? input : ((input && input.url) || '');
+      var hit = (typeof input === 'string' && input.indexOf('/api/') === 0)
+        || url.indexOf(location.origin + '/api/') === 0;
+      if (hit && TK) {
+        init = init || {};
+        var h = init.headers;
+        if (!h) { h = {}; init.headers = h; }
+        if (typeof Headers !== 'undefined' && h instanceof Headers) {
+          if (!h.has('X-Novelapp-Token')) h.set('X-Novelapp-Token', TK);
+        } else if (Array.isArray(h)) {
+          var hasArr = h.some(function(p){ return String(p[0]).toLowerCase() === 'x-novelapp-token'; });
+          if (!hasArr) h.push(['X-Novelapp-Token', TK]);
+        } else {
+          var found = false;
+          for (var k in h) { if (String(k).toLowerCase() === 'x-novelapp-token') { found = true; break; } }
+          if (!found) h['X-Novelapp-Token'] = TK;
+        }
+      }
+    } catch (e) {}
+    return raw.call(this, input, init);
+  };
+})();
+</script>
+
+<script>
 'use strict';
 const $ = id => document.getElementById(id);
 const NL = String.fromCharCode(10);

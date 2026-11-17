@@ -33,6 +33,7 @@ ROOT = _resolve_root()
 if not getattr(sys, 'frozen', False):
     sys.path.insert(0, os.path.join(ROOT, 'core'))
 import coordinator as CO
+from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 import yamlite
 import reviewers as RV
 import stages as ST
@@ -77,6 +78,59 @@ def _rel_to_data(full):
 
 
 MAX_BODY = 16 * 1024 * 1024          # POST body 上限
+
+# ==== SEC-GUARD-BEGIN（v1.0.1 N1/N2）====
+# 入口防护：只认回环 Host、只认同源 Origin、写请求只收 JSON。
+# 目的：挡住 DNS rebinding（假 Host 打到本机）与 CSRF（恶意站点跨站写文件）。
+_LOOPBACK_HOSTS = frozenset({'127.0.0.1', 'localhost', '::1'})
+# 局域网 / 自定义部署才需要：set NOVELAPP_ALLOW_HOSTS=192.168.1.10,nas.local
+_EXTRA_HOSTS = frozenset(
+    h.strip().lower() for h in (os.environ.get('NOVELAPP_ALLOW_HOSTS') or '').split(',') if h.strip())
+_WRITE_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
+_SESSION_TOKEN = ''
+
+
+def _host_key(raw):
+    """Host 头 -> 纯主机名（小写、去端口、去 IPv6 方括号）。解析不了返回 ''。"""
+    s = (raw or '').strip().lower()
+    if not s:
+        return ''
+    if s.startswith('['):
+        end = s.find(']')
+        return s[1:end] if end > 0 else ''
+    if s.count(':') == 1:
+        s = s.rsplit(':', 1)[0]
+    return s
+
+
+def _allowed_host(name):
+    return name in _LOOPBACK_HOSTS or name in _EXTRA_HOSTS
+
+
+def _origin_same(origin, server_port):
+    """Origin 是否同源：http(s) + 回环主机 + 本服务端口。Origin: null 一律拒。"""
+    try:
+        o = urlparse(origin)
+    except Exception:
+        return False
+    scheme = (o.scheme or '').lower()
+    if scheme not in ('http', 'https'):
+        return False
+    if not _allowed_host((o.hostname or '').lower()):
+        return False
+    port = o.port
+    if port is None:
+        port = 443 if scheme == 'https' else 80
+    return port == server_port
+
+
+def _session_token():
+    """进程内随机令牌：没有 NOVELAPP_BACKEND_TOKEN 时用它给界面注入 chat 令牌。"""
+    global _SESSION_TOKEN
+    if not _SESSION_TOKEN:
+        _SESSION_TOKEN = 'nvls-' + os.urandom(16).hex()
+    return _SESSION_TOKEN
+# ==== SEC-GUARD-END ====
 MAX_SAVE_CHARS = 5_000_000           # 单文件写入上限（约 500 万字，超限明确报错，绝不静默截断）
 ALLOWED_EXT = ('.md', '.txt', '.json')
 SHRINK_GUARD = 0.5                   # 新内容不足原文件一半时需 force
@@ -352,7 +406,7 @@ def ensure_cfg_fresh(force=False):
             if not isinstance(new, dict):
                 raise ValueError('顶层不是 JSON 对象')
         except Exception as e:
-            CFG_STATE.update({'sig': sig, 'error': '%s: %s' % (type(e).__name__, e)})
+            CFG_STATE.update({'sig': sig, 'error': report(e)})
             _log_config('重载失败，保留旧配置：%s' % CFG_STATE['error'])
             return CFG
         CFG = new
@@ -603,7 +657,7 @@ def probe_ollama(timeout=2.0):
         with request.urlopen(OLLAMA_TAGS, timeout=timeout) as r:
             data = json.loads(r.read().decode('utf-8', 'replace'))
     except Exception as e:
-        info['error'] = '%s' % (getattr(e, 'reason', None) or type(e).__name__)
+        info['error'] = report(e, where='probe_ollama')
         info['ms'] = int((time.time() - t0) * 1000)
         return info
     models = []
@@ -724,7 +778,7 @@ def setup_test(endpoint, api_key, model, timeout=15.0):
     except Exception as e:
         return {'ok': False, 'error': 'request_failed', 'model': model, 'endpoint': ep,
                 'masked_key': mask_key(key), 'ms': int((time.time() - t0) * 1000),
-                'hint': type(e).__name__, 'detail': str(e)[:300]}
+                'hint': report(e, where='setup_test'), 'detail': ''}
 
     ms = int((time.time() - t0) * 1000)
     try:
@@ -1115,7 +1169,7 @@ def gateway_db_key(token_id=None, name=None):
         finally:
             con.close()
     except Exception as e:
-        return None, '%s: %s' % (type(e).__name__, e)
+        return None, report(e)
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
     if not row or not row[0]:
@@ -1287,7 +1341,7 @@ def _run_script(script_rel, args, timeout=QC_TIMEOUT):
     except subprocess.TimeoutExpired:
         return False, '', '', {'error': 'timeout', 'script': script_rel, 'timeout': timeout}
     except Exception as e:
-        return False, '', '', {'error': '%s: %s' % (type(e).__name__, e), 'script': script_rel}
+        return False, '', '', {'error': report(e), 'script': script_rel}
     out = (p.stdout or b'').decode('utf-8', 'replace')
     err = (p.stderr or b'').decode('utf-8', 'replace')
     info = {'script': script_rel, 'exit': p.returncode,
@@ -1343,7 +1397,7 @@ def layers_payload():
     try:
         data = CO.layers_public()
     except Exception as e:
-        return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e), 'layers': [], 'models': []}
+        return {'ok': False, 'error': report(e), 'layers': [], 'models': []}
     return {'ok': True, **data}
 
 
@@ -1375,7 +1429,7 @@ def reviewers_payload():
         return {'ok': False, 'error': 'no_config', 'detail': path,
                 'mode': 'merge', 'reviewers': [], 'gate': []}
     except Exception as e:
-        return {'ok': False, 'error': 'parse_error', 'detail': '%s: %s' % (type(e).__name__, e),
+        return {'ok': False, 'error': 'parse_error', 'detail': report(e),
                 'mode': 'merge', 'reviewers': [], 'gate': []}
     if not isinstance(data, dict):
         return {'ok': False, 'error': 'parse_error', 'detail': '顶层不是映射',
@@ -1842,8 +1896,8 @@ ENTRY_SPECS = [
     {'key': 'shelf',     'name': '书架',   'routes': ['/api/shelf'],                            'fallback': []},
     {'key': 'startbook', 'name': '开书',   'routes': ['/api/planning'],                         'fallback': []},
     {'key': 'write',     'name': '写',     'routes': ['/api/write'],                            'fallback': []},
-    {'key': 'outline',   'name': '大纲',   'routes': [],                                         'fallback': ['/api/file', '/api/save']},
-    {'key': 'settings',  'name': '设定库', 'routes': [],                                         'fallback': ['/api/tree', '/api/file', '/api/save']},
+    {'key': 'outline',   'name': '大纲',   'routes': ['/api/outline'],                          'fallback': ['/api/file', '/api/save']},
+    {'key': 'settings',  'name': '设定库', 'routes': ['/api/settings'],                         'fallback': ['/api/tree', '/api/file', '/api/save']},
     {'key': 'breakdown', 'name': '拆书',   'routes': ['/api/breakdown/dimensions', '/api/breakdown/import'], 'fallback': []},
     {'key': 'qc',        'name': '质检',   'routes': ['/api/qc'],                               'fallback': []},
     {'key': 'style',     'name': '文风',   'routes': ['/api/polish', '/api/polish/presets'],     'fallback': []},
@@ -1869,7 +1923,7 @@ def ads_payload():
             raw = json.load(f)
     except Exception as e:
         return {'ok': False, 'enabled': False, 'slots': [],
-                'error': '%s: %s' % (type(e).__name__, e)}
+                'error': report(e)}
     if not isinstance(raw, dict) or not raw.get('enabled'):
         return off
     today = time.strftime('%Y-%m-%d')
@@ -1944,15 +1998,213 @@ def entries_payload():
         counts[r['state']] = counts.get(r['state'], 0) + 1
     shipped = os.path.join(ROOT, '发布桌面版', 'core', 'server.py')
     src = os.path.abspath(__file__)
+    src_bytes = _server_bytes(src)
+    shipped_bytes = _server_bytes(shipped)
+    shipped_present = os.path.isfile(shipped)
+    # issue-0001：发布包比源码瘦一大截时要说出来，否则会有人直接把旧包发出去
+    shipped_stale = bool(shipped_present and src_bytes and shipped_bytes < src_bytes * 0.8)
+    if not shipped_present:
+        shipped_note = '没有发布包（还没打包）'
+    elif shipped_stale:
+        shipped_note = ('发布包是旧版（%d 字节 vs 源码 %d 字节，仅 %.0f%%），'
+                        '含已知安全修复缺失，先重新构建再用'
+                        % (shipped_bytes, src_bytes, 100.0 * shipped_bytes / src_bytes))
+    else:
+        shipped_note = ''
     return {'ok': True,
             'entries': rows,
             'counts': counts,
             'server_source': src,
-            'server_source_bytes': _server_bytes(src),
+            'server_source_bytes': src_bytes,
             'shipped_path': shipped,
-            'shipped_bytes': _server_bytes(shipped),
-            'shipped_present': os.path.isfile(shipped)}
+            'shipped_bytes': shipped_bytes,
+            'shipped_present': shipped_present,
+            'shipped_stale': shipped_stale,
+            'shipped_note': shipped_note}
 # ==== M0-ENTRIES-END ====
+
+# ---------------- 大纲 / 设定库专用 API（v1.0.1 第 3 项） ----------------
+# 依据 docs/架构-通用版/08-章纲分场规范.md：
+#   章纲 = 场次表 + 必须做到的事 + 本章推进（可省） + 不许做 + 文风锚点
+# 目的：这两个入口不再靠 /api/tree + /api/file + /api/save 兜底，
+#       章纲在写入前就按规范校验，不合格直接挡下来。
+_ENTRY_DIRS = {'outline': '大纲', 'settings': '设定库'}
+_OUTLINE_BLOCKS = ('场次', '必须做到', '本章推进', '不许做', '文风锚点')
+
+
+def _entry_dir_of(kind):
+    d = _ENTRY_DIRS.get(kind)
+    if not d:
+        raise PathError('未知入口：%s' % kind)
+    return d
+
+
+def _entry_path(book, kind, name=''):
+    """项目内 大纲/ 或 设定库/ 的路径。读写都走 safe_rel，越界抛 PathError。"""
+    b = safe_name(book)
+    rel = 'projects/%s/%s' % (b, _entry_dir_of(kind))
+    if name:
+        rel = rel + '/' + str(name).replace('\\', '/').strip('/')
+        return safe_rel(rel, need_ext=('.md',))
+    return safe_rel(rel)
+
+
+def _md_title(txt, fallback):
+    for line in (txt or '').splitlines():
+        if line.startswith('# '):
+            return line[2:].strip() or fallback
+    return fallback
+
+
+def _entry_item(full, rel_name):
+    """一个 md 文件的列表项：标题、字数、改时间；读不了就给一节中文原因，不炸整棵树。"""
+    try:
+        with open(full, encoding='utf-8', errors='replace') as f:
+            txt = f.read()
+    except OSError as e:
+        return {'name': rel_name, 'title': rel_name, 'chars': 0, 'error': human(e, '读取')}
+    base = os.path.splitext(os.path.basename(rel_name))[0]
+    try:
+        mtime = time.strftime('%Y-%m-%d %H:%M', time.localtime(os.path.getmtime(full)))
+    except OSError:
+        mtime = ''
+    return {'name': rel_name, 'title': _md_title(txt, base), 'chars': len(txt), 'mtime': mtime}
+
+
+def _walk_md(root, prefix='', depth=2):
+    """递归收 .md（设定库下可能有 承诺/ 这类子目录）。返回 (items, error)。"""
+    items = []
+    try:
+        names = sorted(os.listdir(root))
+    except OSError as e:
+        return items, human(e, '读取目录')
+    for name in names:
+        if name.startswith('.'):
+            continue
+        p = os.path.join(root, name)
+        if os.path.isdir(p):
+            if depth <= 0:
+                continue
+            sub, err = _walk_md(p, prefix + name + '/', depth - 1)
+            items.extend(sub)
+            if err:
+                return items, err
+            continue
+        if not name.lower().endswith('.md'):
+            continue
+        items.append(_entry_item(p, prefix + name))
+    return items, ''
+
+
+def entry_list(book, kind):
+    """列 大纲/ 或 设定库/ 下的一层 md。目录不存在不是错误，exists=false。"""
+    norm, full = _entry_path(book, kind)
+    res = {'ok': True, 'book': book, 'kind': kind, 'dir': _entry_dir_of(kind),
+           'path': norm, 'exists': os.path.isdir(full), 'files': [], 'count': 0}
+    if not res['exists']:
+        return res
+    files, err = _walk_md(full)
+    res['files'] = files
+    res['count'] = len(files)
+    if err:
+        res['error'] = err
+    return res
+
+
+def outline_blocks(text):
+    """按 **块名** 切章纲块，返回 {块名: 正文}；只认规范里的五个块名。"""
+    blocks, cur, buf = {}, None, []
+    for line in (text or '').splitlines():
+        m = re.match(r'^\*\*(.+?)\*\*\s*$', line.strip())
+        name = ''
+        if m:
+            raw = m.group(1).strip()
+            for known in _OUTLINE_BLOCKS:
+                if raw.startswith(known):
+                    name = known
+                    break
+        if name:
+            if cur:
+                blocks[cur] = '\n'.join(buf).strip()
+            cur, buf = name, []
+            continue
+        if cur is not None:
+            buf.append(line)
+    if cur:
+        blocks[cur] = '\n'.join(buf).strip()
+    return blocks
+
+
+def _is_chapter_outline(name, text):
+    """哪些文件算章纲：文件名 3 位数字开头（009-xxx.md），或正文里已经有分场块。
+    全书大纲 / 分卷大纲 这类整体大纲不做章纲校验。"""
+    if re.match(r'^\d{3}', os.path.basename(str(name or ''))):
+        return True
+    return '<details' in (text or '').lower()
+
+
+def check_chapter_outline(text):
+    """章纲校验（六项必填 + 两条提醒）。error 级挡写入，warn 级只提示。
+
+    依据 08-章纲分场规范 §二：场次表 / 必须做到 / 本章推进 / 不许做 / 文风锚点，缺一不可
+    （本章推进可省——系统会按可推进卷自动挑，但挑出来的常和本章主题不搭）。
+    """
+    issues = []
+
+    def add(code, level, msg):
+        issues.append({'code': code, 'level': level, 'message': msg})
+
+    txt = text or ''
+    if '<details' not in txt.lower():
+        add('outline.no-details', 'error',
+            '没有分场块（<details>）：现在只是一句话章纲，模型会自己铺 1200 字环境再进冲突')
+        return {'ok': False, 'issues': issues, 'blocks': [], 'scenes': 0}
+
+    blocks = outline_blocks(txt)
+    if not blocks:
+        add('outline.no-blocks', 'error', '分场块里没有「**场次**」这类小标题，读不出块')
+        return {'ok': False, 'issues': issues, 'blocks': [], 'scenes': 0}
+
+    scenes = 0
+    rows = [ln.strip() for ln in (blocks.get('场次') or '').splitlines()
+            if ln.strip().startswith('|')]
+    rows = [r for r in rows if not re.match(r'^\|[\s:|-]+\|$', r)]
+    if not rows:
+        add('outline.no-scene-table', 'error', '缺「场次」表：地点·时辰 / 发生什么 / 约字数 都没写')
+    else:
+        cols = [c for c in rows[0].strip('|').split('|')]
+        if len(cols) < 4:
+            add('outline.scene-cols', 'error',
+                '场次表只有 %d 列，规范是 4 列（场 / 地点·时辰 / 发生什么 / 约字数）' % len(cols))
+        scenes = max(len(rows) - 1, 0)
+        if scenes < 2:
+            add('outline.too-few-scenes', 'error',
+                '只有 %d 场，至少 2 场；一场写到底就会变成流水账' % scenes)
+
+    must = [ln for ln in (blocks.get('必须做到') or '').splitlines()
+            if re.match(r'^\s*(\d+[.、)]|[-*]\s)', ln)]
+    if len(must) < 3:
+        add('outline.must-too-few', 'error',
+            '「必须做到的事」只有 %d 条，规范是 3-6 条，每条要能用「有/没有」回答' % len(must))
+
+    forb = [ln for ln in (blocks.get('不许做') or '').splitlines()
+            if re.match(r'^\s*(\d+[.、)]|[-*]\s)', ln)]
+    if not forb:
+        add('outline.no-forbid', 'error', '缺「不许做」：模型会自编人物和设定')
+
+    style = [ln for ln in (blocks.get('文风锚点') or '').splitlines()
+             if re.match(r'^\s*(\d+[.、)]|[-*]\s)', ln)]
+    if not style:
+        add('outline.no-style-anchor', 'warn', '缺「文风锚点」：容易文风漂移，建议抄一句已有正文')
+
+    adv = (blocks.get('本章推进') or '').strip()
+    if adv and not re.findall(r'P-\d{3}', adv):
+        add('outline.advance-no-id', 'warn', '「本章推进」里没有 P-XXX 编号，承诺表会变成死账')
+
+    return {'ok': not any(i['level'] == 'error' for i in issues),
+            'issues': issues, 'blocks': list(blocks.keys()), 'scenes': scenes}
+
+
 class H(BaseHTTPRequestHandler):
     server_version = 'NovelApp/1.1'
 
@@ -1983,10 +2235,103 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _entry_dir(self, q, kind):
+        """GET /api/outline、/api/settings：不带 name 列目录；带 name 读单篇。
+
+        大纲单篇会附 check（章纲规范校验结果），前端据此标红不合格块。
+        """
+        book = (q.get('book') or [''])[0].strip()
+        name = (q.get('name') or [''])[0].strip()
+        if not book:
+            self._json({'ok': False, 'kind': kind, 'error': 'book 必填'}, 400)
+            return
+        if not name:
+            self._json(entry_list(book, kind), 200)
+            return
+        norm, full = _entry_path(book, kind, name)
+        if not os.path.isfile(full):
+            self._json({'ok': False, 'kind': kind, 'error': '文件不存在：%s' % name}, 404)
+            return
+        with open(full, encoding='utf-8', errors='replace') as f:
+            txt = f.read()
+        out = {'ok': True, 'kind': kind, 'book': book, 'name': name,
+               'path': norm, 'content': txt, 'chars': len(txt)}
+        if kind == 'outline':
+            out['check'] = check_chapter_outline(txt) if _is_chapter_outline(name, txt) else None
+        self._json(out, 200)
+
+    def _entry_save(self, data, kind):
+        """POST /api/outline、/api/settings：{book, name, content, force?}
+
+        章纲（009-xxx.md 或已含 <details>）先过规范校验：error 级不写盘，除非 force=true。
+        其它文件（全书大纲、设定库）只做长度与路径校验。
+        """
+        book = str(data.get('book') or '').strip()
+        name = str(data.get('name') or '').strip()
+        content = data.get('content')
+        if not book or not name:
+            self._json({'ok': False, 'kind': kind, 'error': 'book 和 name 必填'}, 400)
+            return
+        if not isinstance(content, str):
+            self._json({'ok': False, 'kind': kind, 'error': 'content 必须是字符串'}, 400)
+            return
+        if len(content) > MAX_SAVE_CHARS:
+            self._json({'ok': False, 'kind': kind,
+                        'error': '内容过长（上限 %d 字）' % MAX_SAVE_CHARS}, 400)
+            return
+        norm, full = _entry_path(book, kind, name)
+        chk = None
+        if kind == 'outline' and _is_chapter_outline(name, content):
+            chk = check_chapter_outline(content)
+            if not chk['ok'] and not data.get('force'):
+                self._json({'ok': False, 'kind': kind, 'name': name,
+                            'error': '章纲不合格，没有写入', 'check': chk,
+                            'hint': '按 check.issues 补全后再存；确实要存就带 force=true'}, 400)
+                return
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        atomic_write(full, content)
+        self._json({'ok': True, 'kind': kind, 'book': book, 'name': name,
+                    'path': norm, 'chars': len(content), 'check': chk}, 200)
+
     def _err(self, msg, code=400, **extra):
         payload = {'error': msg}
         payload.update(extra)
         self._json(payload, code)
+
+    # ---- v1.0.1 入口防护：Host / Origin / Content-Type ----
+    def _guard(self):
+        """拦在鉴权之前：假 Host、跨站 Origin、非 JSON 写请求一律 403。"""
+        name = _host_key(self.headers.get('Host'))
+        if name and not _allowed_host(name):
+            self._json({'ok': False, 'error': 'host_not_allowed'}, 403)
+            return False
+        method = (self.command or '').upper()
+        if method in _WRITE_METHODS:
+            site = (self.headers.get('Sec-Fetch-Site') or '').strip().lower()
+            if site == 'cross-site':
+                self._json({'ok': False, 'error': 'origin_not_allowed'}, 403)
+                return False
+            origin = (self.headers.get('Origin') or '').strip()
+            if origin:
+                try:
+                    port = self.server.server_address[1]
+                except Exception:
+                    port = 0
+                if not _origin_same(origin, port):
+                    self._json({'ok': False, 'error': 'origin_not_allowed'}, 403)
+                    return False
+        if method in ('POST', 'PUT', 'PATCH'):
+            ctype = (self.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+            if ctype != 'application/json':
+                self._json({'ok': False, 'error': 'content_type_not_json'}, 403)
+                return False
+        return True
+
+    def _chat_ok(self):
+        """对话接口必须带令牌：环境变量优先，否则用进程内随机令牌（由页面注入）。"""
+        got = (self.headers.get('X-Novelapp-Token') or '').strip()
+        expect = os.environ.get('NOVELAPP_BACKEND_TOKEN') or _session_token()
+        return bool(got) and got == expect
 
     def _auth_ok(self):
         # 2026-11-07 auth (P0-2): 8770 had no auth at all.
@@ -2146,7 +2491,7 @@ class H(BaseHTTPRequestHandler):
             self._json({'ok': True, 'book': book, 'foreshadow': items, 'promise': prom,
                         'file': path}, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _abandon(self, data):
         """把指定的账目标成作废。data: {book, foreshadow: [id], promise: [id]}"""
@@ -2170,7 +2515,7 @@ class H(BaseHTTPRequestHandler):
             changed = sum(len(r.get('changed') or []) for r in res.values())
             self._json({'ok': True, 'changed': changed, 'detail': res}, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _assistant(self, data):
         """POST /api/assistant —— 右栏挂件（私人助理）。
@@ -2288,7 +2633,7 @@ class H(BaseHTTPRequestHandler):
             except Exception:
                 pass
         except Exception as e:
-            send({'type': 'error', 'text': '%s: %s' % (type(e).__name__, e)})
+            send({'type': 'error', 'text': report(e)})
 
     def _assistant_answer(self, data):
         """POST /api/assistant/answer —— 挂件里点了选项/填了回答，把答案回给正在等的那次工具调用。"""
@@ -2330,7 +2675,7 @@ class H(BaseHTTPRequestHandler):
             self._json({'ok': False, 'error': '对话框超过 5 分钟没选（超时）'}, 408)
             return
         except Exception as ex:
-            self._json({'ok': False, 'error': '%s: %s' % (type(ex).__name__, ex)}, 500)
+            self._json({'ok': False, 'error': report(ex)}, 500)
             return
         out = (proc.stdout or b'').decode('utf-8', 'replace').strip()
         if not out:
@@ -2354,7 +2699,7 @@ class H(BaseHTTPRequestHandler):
         try:
             size = os.path.getsize(full)
         except OSError as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
             return
         if size > ASST_FILE_BYTES:
             self._json({'ok': False, 'error': '单个附件最多 %d MB，这个是 %.1f MB' % (
@@ -2368,7 +2713,7 @@ class H(BaseHTTPRequestHandler):
             try:
                 text, clipped = _asst_read_text(full)
             except Exception as e:
-                self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+                self._json({'ok': False, 'error': report(e)}, 500)
                 return
             self._json({'ok': True, 'path': full, 'name': os.path.basename(full),
                         'ext': ext, 'kind': kind, 'chars': len(text), 'chars_at_least': clipped,
@@ -2398,7 +2743,7 @@ class H(BaseHTTPRequestHandler):
             out = PL.ask_step(book, sid, data.get('extra'))
             self._json(out, 200 if out.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _planning(self, data):
         """POST /api/planning —— 13 步概览（状态 + 产出字数 + 进度）。"""
@@ -2410,7 +2755,7 @@ class H(BaseHTTPRequestHandler):
             import planning as PL
             self._json({'ok': True, 'data': PL.summary(book)}, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _breakdown_import(self, data):
         """POST /api/breakdown/import —— 导入一本参考书，拆出「开篇钩子 + 十合一」。
@@ -2435,7 +2780,7 @@ class H(BaseHTTPRequestHandler):
             r = BU.import_book(path, data.get('name'))
             self._json(r, 200 if r.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _breakdown_dimension(self, data):
         """POST /api/breakdown/dimension —— 给一本已拆过的书再拆一个维度。
@@ -2457,7 +2802,7 @@ class H(BaseHTTPRequestHandler):
             r = BU.import_dimension(book, code, force=force)
             self._json(r, 200 if r.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _breakdown_dimensions(self, q):
         """GET /api/breakdown/dimensions?book=<书名> —— 这本书哪些维度拆过了。"""
@@ -2470,7 +2815,7 @@ class H(BaseHTTPRequestHandler):
             r = BU.list_dimensions(book)
             self._json(r, 200 if r.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _planning_brief(self, data):
         """POST /api/planning/brief —— 记下「这本书你想写什么」。
@@ -2486,7 +2831,7 @@ class H(BaseHTTPRequestHandler):
             txt = PL.set_brief(book, data.get('text') or '')
             self._json({'ok': True, 'brief': txt, 'data': PL.summary(book)}, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _planning_refs(self, data):
         """POST /api/planning/refs —— 记下「参考哪几本拆解」。可空。
@@ -2502,7 +2847,7 @@ class H(BaseHTTPRequestHandler):
             refs = PL.set_refs(book, data.get('refs') or [])
             self._json({'ok': True, 'refs': refs, 'data': PL.summary(book)}, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _planning_step(self, data):
         """POST /api/planning/step —— 读/写某一步的产出。
@@ -2524,7 +2869,7 @@ class H(BaseHTTPRequestHandler):
             else:
                 self._json({'ok': True, 'text': PL.read_step(book, sid)}, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _planning_status(self, data):
         """POST /api/planning/status —— 改一步状态（含「跳过」和跳过原因）。"""
@@ -2539,7 +2884,7 @@ class H(BaseHTTPRequestHandler):
             cur = PL.set_step(book, sid, status or None, data.get('skip_reason'))
             self._json({'ok': True, 'step': cur, 'data': PL.summary(book)}, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _recheck(self, data):
         """POST /api/chapter/recheck —— Step 7 复检：改完之后重跑四关。
@@ -2565,7 +2910,7 @@ class H(BaseHTTPRequestHandler):
                 'verdict': 'pass' if pre.get('passed') else 'fail',
             }, 200)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _ai_detect(self, data):
         """POST /api/ai-detect —— 判一章正文的「AI 痕迹」。
@@ -2602,8 +2947,7 @@ class H(BaseHTTPRequestHandler):
             with open(full, encoding='utf-8', errors='replace') as f:
                 text = f.read()
         except OSError as e:
-            self._json({'ok': False, 'error': '读不了：%s: %s'
-                        % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': '读不了：' + report(e)}, 500)
             return
         try:
             import ai_detect as AD
@@ -2612,7 +2956,7 @@ class H(BaseHTTPRequestHandler):
             r['chapter'] = fname
             self._json(r, 200 if r.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _ai_detect_text(self, data):
         """POST /api/ai-detect/text —— 直接传一段文本（给以后的编辑器选区用）。
@@ -2629,7 +2973,7 @@ class H(BaseHTTPRequestHandler):
             r = AD.detect(text, title)
             self._json(r, 200 if r.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _ai_detect_rewrite(self, data):
         """POST /api/ai-detect/rewrite —— 给「去痕改写建议」（只读）。
@@ -2670,8 +3014,7 @@ class H(BaseHTTPRequestHandler):
                 with open(full, encoding='utf-8', errors='replace') as f:
                     text = f.read()
             except OSError as e:
-                self._json({'ok': False, 'error': '读不了：%s: %s'
-                            % (type(e).__name__, e)}, 500)
+                self._json({'ok': False, 'error': '读不了：' + report(e)}, 500)
                 return
             if not title:
                 title = os.path.splitext(fname)[0]
@@ -2686,7 +3029,7 @@ class H(BaseHTTPRequestHandler):
             r['readonly'] = True        # 明写给前端：这条接口不会写任何文件
             self._json(r, 200 if r.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     def _consensus(self, data):
         results = data.get('results')
@@ -2698,11 +3041,13 @@ class H(BaseHTTPRequestHandler):
             out = RV.extract_consensus(results, model=data.get('model'))
             self._json(out, 200 if out.get('ok') else 400)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
 
     # -------- GET --------
 
     def do_GET(self):
+        if not self._guard():
+            return
         if not self._auth_ok():
             return self._json({'ok': False, 'error': 'unauthorized'}, 401)
         u = urlparse(self.path)
@@ -2712,7 +3057,12 @@ class H(BaseHTTPRequestHandler):
             if u.path in ('/', '/index.html'):
                 self._index()
             elif u.path == '/api/tree':
-                self._json({'tree': tree('projects'), 'root': ROOT})
+                _rel = (q.get('path') or [''])[0].strip()
+                if _rel:
+                    _norm, _ = safe_rel(_rel)      # .. 穿越 / 绝对路径 -> PathError -> 400
+                    self._json({'tree': tree(_norm), 'root': ROOT})
+                else:
+                    self._json({'tree': tree('projects'), 'root': ROOT})
             elif u.path == '/api/file':
                 self._read_file(q)
             elif u.path == '/api/sessions':
@@ -2838,16 +3188,16 @@ class H(BaseHTTPRequestHandler):
                             'projects_root': PROJECTS})
             elif u.path == '/api/entries':                    # M0-GET-ROUTES
                 self._json(entries_payload(), 200)
-            elif u.path == '/api/outline':                    # M0-GET-ROUTES
-                self._entry_501('outline')                    # 无专用 handler，见 ENTRY_SPECS
-            elif u.path == '/api/settings':                   # M0-GET-ROUTES
-                self._entry_501('settings')                   # 同上；/api/settings/* 子路由不受影响
+            elif u.path == '/api/outline':                    # 大纲：列目录 / 读单篇
+                self._entry_dir(q, 'outline')
+            elif u.path == '/api/settings':                   # 设定库：列目录 / 读单篇
+                self._entry_dir(q, 'settings')
             else:
                 self._json({'error': 'unknown'}, 404)
         except PathError as e:
             self._err(str(e), 400)
         except Exception as e:
-            self._err('%s: %s' % (type(e).__name__, e), 500)
+            self._err(report(e), 500)
 
     def _index(self):
         p = os.path.join(ROOT, 'web', 'index.html')
@@ -2855,6 +3205,9 @@ class H(BaseHTTPRequestHandler):
             self._json({'error': 'index.html 不存在'}, 404)
             return
         body = open(p, 'rb').read()
+        # v1.0.1：给页面注入请求令牌（页面脚本据此带 X-Novelapp-Token 调 /api/chat）
+        _tk = (os.environ.get('NOVELAPP_BACKEND_TOKEN') or _session_token()).encode('utf-8')
+        body = body.replace(b'__NOVELAPP_TOKEN__', _tk)
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
@@ -2921,7 +3274,7 @@ class H(BaseHTTPRequestHandler):
         try:
             result = run_qc_file(full, norm)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e),
+            self._json({'ok': False, 'error': report(e),
                         'issues': [], 'stats': {}}, 200)
             return
         self._json(result, 200)
@@ -2929,6 +3282,8 @@ class H(BaseHTTPRequestHandler):
     # -------- POST --------
 
     def do_POST(self):
+        if not self._guard():
+            return
         if not self._auth_ok():
             return self._json({'ok': False, 'error': 'unauthorized'}, 401)
         u = urlparse(self.path)
@@ -2936,6 +3291,9 @@ class H(BaseHTTPRequestHandler):
             ensure_cfg_fresh()
             data = self._body()
             if u.path == '/api/chat':
+                if not self._chat_ok():
+                    self._json({'ok': False, 'error': 'unauthorized'}, 401)
+                    return
                 self._chat(data)
                 return
             if u.path == '/api/login':
@@ -3087,16 +3445,16 @@ class H(BaseHTTPRequestHandler):
                 self._planning_status(data)
             elif u.path == '/api/planning/ask':
                 self._planning_ask(data)
-            elif u.path == '/api/outline':                    # M0-POST-ROUTES
-                self._entry_501('outline')
-            elif u.path == '/api/settings':                   # M0-POST-ROUTES
-                self._entry_501('settings')
+            elif u.path == '/api/outline':                    # 大纲：写单篇（章纲先校验）
+                self._entry_save(data, 'outline')
+            elif u.path == '/api/settings':                   # 设定库：写单篇
+                self._entry_save(data, 'settings')
             else:
                 self._json({'error': 'unknown'}, 404)
         except PathError as e:
             self._err(str(e), 400)
         except Exception as e:
-            self._err('%s: %s' % (type(e).__name__, e), 500)
+            self._err(report(e), 500)
 
     def _layers_clear(self, data):
         """POST /api/layers/clear —— 删一章的 .layers 层缓存。
@@ -3130,7 +3488,7 @@ class H(BaseHTTPRequestHandler):
         try:
             removed = layer_clear(book, ch)
         except OSError as e:
-            self._json({'ok': False, 'error': '删不掉：%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': '删不掉：' + report(e)}, 500)
             return
         _log('手动清层缓存：%s/%s 删了 %d 个文件' % (book, ch, len(removed)))
         self._json({'ok': True, 'book': book, 'chapter': ch, 'removed': removed}, 200)
@@ -3190,7 +3548,7 @@ class H(BaseHTTPRequestHandler):
                 resp = CO.chat(dict(cfg, temperature=0.9 if idx > 1 else 0.8),
                                [{'role': 'user', 'content': prompt}])
             except Exception as e:
-                send({'type': 'error', 'variant': idx, 'message': '%s: %s' % (type(e).__name__, e)})
+                send({'type': 'error', 'variant': idx, 'message': report(e)})
                 continue
             billing = resp.get('_billing') or {}
             text = CO.sanitize_worker_text(CO._extract_content(resp) or '').strip()
@@ -3511,7 +3869,7 @@ class H(BaseHTTPRequestHandler):
                 hit = ctx.get('sections') or {}
                 ctx_info = {'chars': ctx.get('chars'), 'hit': hit}
         except Exception as e:
-            ctx_info = {'error': '%s: %s' % (type(e).__name__, e)}
+            ctx_info = {'error': report(e)}
 
         # 资料完整性门槛：客户「从零写」之前先看他有没有料
         NAME = {'characters': '角色卡', 'prev': '前情正文', 'outline': '章纲',
@@ -3687,7 +4045,7 @@ class H(BaseHTTPRequestHandler):
             return
         except Exception as e:
             auth = isinstance(e, getattr(CO, 'GatewayAuthError', ()))
-            reason = (str(e)[:40] if auth else '写章失败：%s' % (str(e)[:40] or type(e).__name__))
+            reason = (str(e)[:40] if auth else '写章失败：' + human(e))
             # 失败不能把章节卡在 working：回到原状态（draft 还是 draft、awaiting 还是 awaiting）
             back = prev_stage if prev_stage in ('draft', 'awaiting', 'blocked', 'done') else 'draft'
             if back == 'working':        # working 是瞬时态，失败时不能停在它上面
@@ -3802,7 +4160,7 @@ class H(BaseHTTPRequestHandler):
             import chapter_commit as CC
             commit_info = CC.commit_chapter(book, ch, body, precheck=pre)
         except Exception as e:
-            commit_info = {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+            commit_info = {'ok': False, 'error': report(e)}
         if commit_info.get('ok'):
             # 说真话：这条路径跑了 Step 2/3/4（重点章判定 + 写作 + 质检）。
             # Step 5 审稿团只在 pipeline=true 时跑；Step 1 的六问在 write_context 里（3/6 是真数据）。
@@ -3834,7 +4192,7 @@ class H(BaseHTTPRequestHandler):
                                  'consensus_error': _cons.get('error')}})
             except Exception as e:
                 send({'type': 'step', 'step': 5, 'name': '审稿团', 'status': 'failed',
-                      'detail': {'error': '%s: %s' % (type(e).__name__, e)}})
+                      'detail': {'error': report(e)}})
 
         # 承诺自动 touch：只有章纲明确指定（plan）才登记；auto 只提示不猜
         try:
@@ -3853,7 +4211,7 @@ class H(BaseHTTPRequestHandler):
             else:
                 send({'type': 'promises', 'ok': True, 'source': 'none', 'touched': []})
         except Exception as _pe:
-            send({'type': 'promises', 'ok': False, 'error': '%s: %s' % (type(_pe).__name__, _pe)})
+            send({'type': 'promises', 'ok': False, 'error': report(_pe)})
 
         # 角色状态表更新：六问第 2 问的数据源，失败不影响主流程
         try:
@@ -3863,7 +4221,7 @@ class H(BaseHTTPRequestHandler):
                   'changed': _us.get('changed') or [],
                   'note': _us.get('note') or _us.get('error') or ''})
         except Exception as _e:
-            send({'type': 'role_state', 'ok': False, 'error': '%s: %s' % (type(_e).__name__, _e)})
+            send({'type': 'role_state', 'ok': False, 'error': report(_e)})
 
         if tier_name != 'normal':
             send({'type': 'tier', 'tier': tier_name, 'reason': tier_reason, 'model': model})
@@ -3933,7 +4291,7 @@ class H(BaseHTTPRequestHandler):
                     models=models_override if isinstance(models_override, dict) else None)
             except Exception as e:
                 self._json({'ok': False, 'error': 'review_override_invalid',
-                            'detail': '%s: %s' % (type(e).__name__, e)}, 400)
+                            'detail': report(e)}, 400)
                 return
         # 可选：角色卡 / 地图 / 上一章 / 章号（路径同样锁在 projects/ 内）
         extras = {}
@@ -4010,7 +4368,7 @@ class H(BaseHTTPRequestHandler):
         except Exception as e:
             try:
                 self.wfile.write(('data: ' + json.dumps(
-                    {'type': 'error', 'text': '%s: %s' % (type(e).__name__, e)},
+                    {'type': 'error', 'text': report(e)},
                     ensure_ascii=False) + '\n\n').encode('utf-8'))
                 self.wfile.flush()
             except Exception:
@@ -4025,7 +4383,7 @@ class H(BaseHTTPRequestHandler):
             self._json({'ok': False, 'error': 'bad_request', 'hint': str(e)}, 400)
             return
         except Exception as e:
-            self._json({'ok': False, 'error': 'internal', 'hint': '%s: %s' % (type(e).__name__, e)}, 200)
+            self._json({'ok': False, 'error': 'internal', 'hint': report(e)}, 200)
             return
         self._json(res, 200 if res.get('ok') else 401)
 
@@ -4034,7 +4392,7 @@ class H(BaseHTTPRequestHandler):
         try:
             res = account_balance(sid)
         except Exception as e:
-            res = {'ok': False, 'error': 'internal', 'hint': '%s: %s' % (type(e).__name__, e)}
+            res = {'ok': False, 'error': 'internal', 'hint': report(e)}
         if not res.get('ok'):
             # R22：余额同样不能因上游登录态而失明 → 回退本地账本，标明来源
             try:
@@ -4054,7 +4412,7 @@ class H(BaseHTTPRequestHandler):
         try:
             res = account_usage(sid, limit)
         except Exception as e:
-            res = {'ok': False, 'error': 'internal', 'hint': '%s: %s' % (type(e).__name__, e)}
+            res = {'ok': False, 'error': 'internal', 'hint': report(e)}
         if not res.get('ok'):
             # R22：网关 /api/log/self 会 401。计费/用量不能因为上游登录态而失明，
             # 回退到本地账本（append-only），并显式标注来源，前端据此区分口径。
@@ -4065,7 +4423,7 @@ class H(BaseHTTPRequestHandler):
                 self._json(loc, 200)
                 return
             except Exception as e:
-                res['local_ledger_error'] = '%s: %s' % (type(e).__name__, e)
+                res['local_ledger_error'] = report(e)
         self._json(res, 200 if res.get('ok') else 401)
 
     # -------- 付费闸 / 账本（task-5） --------
@@ -4075,7 +4433,7 @@ class H(BaseHTTPRequestHandler):
             self._json(PG.status(), 200)
         except Exception as e:
             self._json({'ok': False, 'error': 'internal',
-                        'hint': '%s: %s' % (type(e).__name__, e)}, 500)
+                        'hint': report(e)}, 500)
 
     def _billing_topup(self, data):
         try:
@@ -4083,7 +4441,7 @@ class H(BaseHTTPRequestHandler):
                          data.get('chapters'))
         except Exception as e:
             self._json({'ok': False, 'error': 'internal',
-                        'hint': '%s: %s' % (type(e).__name__, e)}, 500)
+                        'hint': report(e)}, 500)
             return
         if not r.get('ok'):
             self._json(r, 400)
@@ -4102,7 +4460,7 @@ class H(BaseHTTPRequestHandler):
                           data.get('chapters'))
         except Exception as e:
             self._json({'ok': False, 'error': 'internal',
-                        'hint': '%s: %s' % (type(e).__name__, e)}, 500)
+                        'hint': report(e)}, 500)
             return
         if not r.get('ok'):
             self._json(r, 400)
@@ -4119,7 +4477,7 @@ class H(BaseHTTPRequestHandler):
             return
         except Exception as e:
             self._json({'ok': False, 'error': 'internal',
-                        'hint': '%s: %s' % (type(e).__name__, e)}, 200)
+                        'hint': report(e)}, 200)
             return
         code = 200 if res.get('ok') else (401 if res.get('error') in ('unauthorized',) else 200)
         self._json(res, code)
@@ -4129,7 +4487,7 @@ class H(BaseHTTPRequestHandler):
             self._json(account_token(), 200)
         except Exception as e:
             self._json({'ok': False, 'error': 'internal',
-                        'hint': '%s: %s' % (type(e).__name__, e)}, 200)
+                        'hint': report(e)}, 200)
 
     def _gateway_status(self):
         g = CO.gateway_cfg(CFG)
@@ -4170,7 +4528,7 @@ class H(BaseHTTPRequestHandler):
         try:
             self._json(setup_status(), 200)
         except Exception as e:
-            self._json({'configured': False, 'error': '%s: %s' % (type(e).__name__, e),
+            self._json({'configured': False, 'error': report(e),
                         'providers': SETUP_PROVIDERS,
                         'local_ollama': {'detected': False, 'models': []}}, 200)
 
@@ -4181,7 +4539,7 @@ class H(BaseHTTPRequestHandler):
             self._json({'ok': False, 'error': 'bad_request', 'hint': str(e)}, 400)
             return
         except Exception as e:
-            self._json({'ok': False, 'error': 'internal', 'hint': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': 'internal', 'hint': report(e)}, 500)
             return
         self._json(res, 200)          # 业务失败也是 200，前端看 ok 字段
 
@@ -4211,7 +4569,7 @@ class H(BaseHTTPRequestHandler):
             return
         except Exception as e:
             self._json({'ok': False, 'error': 'write_failed',
-                        'hint': '%s: %s' % (type(e).__name__, e)}, 500)
+                        'hint': report(e)}, 500)
             return
         self._json(res, 200)
 
@@ -4311,7 +4669,7 @@ class H(BaseHTTPRequestHandler):
             lib = _script_lib("debt_view")
             rep = lib.build_debt(book, chapter or None)
         except Exception as e:
-            self._json({"ok": False, "error": "%s: %s" % (type(e).__name__, e)}, 500)
+            self._json({"ok": False, "error": report(e)}, 500)
             return
         self._json(rep, 200 if rep.get("ok") else 404)
 
@@ -4330,7 +4688,7 @@ class H(BaseHTTPRequestHandler):
             rep = _c.analyze(book, n, None)
             self._json({"ok": True, "report": rep, "text": _c.report(rep)}, 200)
         except Exception as e:
-            self._json({"ok": False, "error": "%s: %s" % (type(e).__name__, e)}, 500)
+            self._json({"ok": False, "error": report(e)}, 500)
 
     # 删除：一律先进 data/.trash/<时间戳>/，客户后悔能捞回来
     def _trash_dir(self):
@@ -4361,7 +4719,7 @@ class H(BaseHTTPRequestHandler):
         try:
             os.rename(full, target)
         except OSError as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
             return
         new_rel = norm.rsplit('/', 1)[0] + '/' + to
         # 章节状态跟着搬家：旧编号复位，新编号继承
@@ -4391,7 +4749,7 @@ class H(BaseHTTPRequestHandler):
             os.makedirs(os.path.dirname(target), exist_ok=True)
             shutil.move(full, target)
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
             return
         try:
             _b = ST.book_of_path(norm)
@@ -4413,7 +4771,7 @@ class H(BaseHTTPRequestHandler):
             trash, stamp = self._trash_dir()
             shutil.move(d, os.path.join(trash, name))
         except Exception as e:
-            self._json({'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}, 500)
+            self._json({'ok': False, 'error': report(e)}, 500)
             return
         self._json({'ok': True, 'name': name, 'trash': '.trash/' + stamp}, 200)
     def _chat(self, data):
@@ -4448,7 +4806,7 @@ class H(BaseHTTPRequestHandler):
                 _sse(ev)
         except Exception as e:
             try:
-                _sse({'type': 'error', 'text': '%s: %s' % (type(e).__name__, e)})
+                _sse({'type': 'error', 'text': report(e)})
             except Exception:
                 pass
 
@@ -4515,7 +4873,7 @@ def _http_json(url, token, payload=None, timeout=15):
             detail = {'error': {'message': raw.decode('utf-8', 'replace')[:200]}}
         return e.code, detail
     except Exception as e:
-        return 0, {'error': {'message': '%s: %s' % (type(e).__name__, e)}}
+        return 0, {'error': {'message': report(e)}}
 
 
 def _mask_token(t):
@@ -4887,7 +5245,7 @@ def _describe_image(full, max_bytes=12 * 1024 * 1024):
             return None, '视觉模型返回空（可能被思考占满 max_tokens）'
         return text, None
     except Exception as ex:
-        return None, '%s: %s' % (type(ex).__name__, str(ex)[:120])
+        return None, report(ex, where='run_script')
 
 
 def _user_key():
@@ -4938,7 +5296,7 @@ def _asst_files_preamble(files):
         try:
             size = os.path.getsize(full)
         except OSError as e:
-            return '', '[附带文件读不了] %s（%s: %s）' % (full, type(e).__name__, e), []
+            return '', '[附带文件读不了] %s（%s）' % (full, report(e)), []
         if size > ASST_FILE_BYTES:
             return '', '[附带文件读不了] 单个附件最多 %d MB，%s 是 %.1f MB' % (
                 ASST_FILE_BYTES // (1024 * 1024), os.path.basename(full), size / 1024.0 / 1024.0), []
@@ -4965,7 +5323,7 @@ def _asst_files_preamble(files):
         try:
             text, clipped = _asst_read_text(full)
         except Exception as e:
-            return '', '[附带文件读不了] %s（%s: %s）' % (full, type(e).__name__, e), []
+            return '', '[附带文件读不了] %s（%s）' % (full, report(e)), []
         total = len(text)
         piece = text[:ASST_FILE_LIMIT]
         if clipped or total > ASST_FILE_LIMIT:
@@ -5132,7 +5490,7 @@ def layer_finalize_refresh(book, ch):
             except Exception:
                 pass
         _log('层缓存刷新失败（%s/%s）：%s: %s' % (book, code, type(e).__name__, e))
-        return {'ok': False, 'refreshed': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        return {'ok': False, 'refreshed': False, 'error': report(e)}
 
 
 def layer_clear(book, ch):
@@ -5282,13 +5640,13 @@ def run_agent(user_input, data=None, system_prefix=None):
             yield ev
     except Exception as e:
         if target:
-            reason = '写章失败：%s' % (str(e)[:30] or type(e).__name__)
+            reason = '写章失败：' + human(e)
             _set_stage(target, 'draft', reason=reason, source='writing', action='retry')
             bad = _stage_event(target, 'draft', reason=reason, source='writing',
-                               action='retry', error='%s: %s' % (type(e).__name__, e))
+                               action='retry', error=report(e))
             if bad:
                 yield bad
-        yield {'type': 'error', 'text': '%s: %s' % (type(e).__name__, e)}
+        yield {'type': 'error', 'text': report(e)}
 
 
 def _agent_loop(user_input, stage_target=None, system_prefix=None):
@@ -5332,7 +5690,7 @@ def _agent_loop(user_input, stage_target=None, system_prefix=None):
             resp = CO.chat(co, messages, CO.TOOLS)
         except CO.GatewayAuthError as e:
             if stage_target:
-                reason = '写章失败：%s' % (str(e)[:30] or type(e).__name__)
+                reason = '写章失败：' + human(e)
                 _set_stage(stage_target, 'draft', reason=reason, source='writing', action='retry')
                 ev = _stage_event(stage_target, 'draft', reason=reason, source='writing',
                                   action='retry', error=str(e))
@@ -5397,7 +5755,7 @@ def _agent_loop(user_input, stage_target=None, system_prefix=None):
             try:
                 out = CO.dispatch_tool(name, args, CFG)
             except Exception as e:
-                out = '[工具异常] %s: %s: %s' % (name, type(e).__name__, e)
+                out = '[工具异常] %s：%s' % (name, report(e))
 
             clean = CO.sanitize_worker_text(str(out))
             # 回灌给模型的工具输出上限 12000 字：不设的话 20 步能把上下文顶到十几万 token

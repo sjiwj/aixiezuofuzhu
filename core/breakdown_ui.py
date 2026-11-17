@@ -25,6 +25,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coordinator as CO
+from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 import breakdown_book as BB
 
 EXCERPT = 8000
@@ -162,7 +163,7 @@ def _run_dim(cfg, book_name, dim, desc, excerpt):
         ])
         return CO.sanitize_worker_text(CO._extract_content(resp) or ''), ''
     except Exception as e:
-        return '', '「%s」拆解失败：%s: %s' % (dim, type(e).__name__, str(e)[:80])
+        return '', '「%s」拆解失败：%s' % (dim, report(e))
 
 
 def import_book(path, book_name=None):
@@ -203,7 +204,7 @@ def import_book(path, book_name=None):
     except OSError as e:
         return {'ok': True, 'book': name, 'files': made, 'chars': len(excerpt),
                 'encoding': enc, 'path': out,
-                'warning': '拆解已写好，但原文路径没记住（%s: %s）' % (type(e).__name__, e)}
+                'warning': '拆解已写好，但原文路径没记住（%s）' % report(e)}
 
     return {'ok': True, 'book': name, 'files': made,
             'chars': len(excerpt), 'encoding': enc, 'path': out}

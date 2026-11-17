@@ -23,6 +23,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coordinator as CO
+from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 
 DEFAULTS = {
     'calls_per_hour': 100,
@@ -86,7 +87,7 @@ def fetch_rows(since_ts, dbp=None):
         finally:
             con.close()
     except Exception as e:
-        return None, '%s: %s' % (type(e).__name__, e)
+        return None, report(e)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return rows, None

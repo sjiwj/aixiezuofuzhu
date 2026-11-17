@@ -3,7 +3,9 @@
 param(
     [Parameter(Mandatory = $true)][ValidateSet('polish', 'entries', 'billing')][string]$Case,
     [string]$Root = 'D:\NovelApp',
-    [int]$Port = 8797
+    [int]$Port = 8797,
+    # 额外断言：目前支持 shipped-fresh（/api/entries 判发布包是否过期）
+    [string[]]$Assert = @()
 )
 $ErrorActionPreference = 'Continue'
 $reproDir = Join-Path $Root 'repro'
@@ -63,6 +65,19 @@ try {
             $n = @($j.entries).Count
             $detail = "http=$($r.StatusCode) entries=$n counts=$(($j.counts | ConvertTo-Json -Compress))"
             if ($r.StatusCode -eq 200 -and $n -eq 9) { $verdict = 'PASS' }
+            if ($Assert -contains 'shipped-judged') {
+                # 要的是「报告能判出旧包并给提示」，不是「发布包已是最新」
+                $hasField = $null -ne $j.shipped_stale
+                $note = [string]$j.shipped_note
+                $detail += " shipped_stale=$($j.shipped_stale) note='$note'"
+                if (-not $hasField) {
+                    $verdict = 'FAIL'
+                    Say '  assert: 缺 shipped_stale 字段（无法判断发布包是否过期）'
+                } elseif ($j.shipped_stale -eq $true -and -not $note) {
+                    $verdict = 'FAIL'
+                    Say '  assert: shipped_stale=true 但 shipped_note 为空（没有告诉人该怎么办）'
+                }
+            }
         }
         'billing' {
             $r = Invoke-WebRequest "$base/api/billing/status" -TimeoutSec 8 -UseBasicParsing

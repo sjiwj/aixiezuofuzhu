@@ -17,8 +17,23 @@ FEATURE = ('希望', '能不能', '建议加', 'feature', '支持一下', '可�
 REPRO_KEYS = ('命令', 'cmd', 'python ', 'curl', '步骤', 'steps', '日志', 'log', 'traceback')
 
 
+def _strip_env_section(text):
+    """去掉「## 环境」小节：那里必然写网关、版本、Python 等词，
+    不剔除的话任何带环境信息的 bug 都会被误判成 env。"""
+    out, skip = [], False
+    for line in (text or '').splitlines():
+        m = re.match(r'^#{1,3}\s*(.+)$', line.strip())
+        if m:
+            skip = bool(re.match(r'^(环境|environment)', m.group(1).strip(), re.I))
+            if skip:
+                continue
+        if not skip:
+            out.append(line)
+    return '\n'.join(out)
+
+
 def classify(text):
-    t = text or ''
+    t = _strip_env_section(text)
     low = t.lower()
     score = {
         'env': sum(1 for k in ENV if k.lower() in low),
