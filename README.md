@@ -106,9 +106,11 @@ python -X utf8 tools\prompt_render.py --book "projects\<书名>" --chapter 2 --s
 
 ## 许可与商标
 
-- 代码：**Apache License 2.0**（`LICENSE` 全文；`NOTICE` 为版权与第三方说明）。
-- **名称与 Logo 不随代码授权**（Apache-2.0 §6）：可以 fork、可以改、不可以商用，
-  不要暗示作者背书。
+- 代码：**PolyForm Noncommercial License 1.0.0**（`LICENSE` 全文；`NOTICE` 为版权与第三方说明）。
+  个人使用、研究与教育用途免费；**商业用途需事先取得授权**。
+  v1.0.0 – v1.0.2 曾以 Apache License 2.0 发布（原文存档在 `docs/legal/`），
+  那部分授权不可撤销，已取得的副本仍可按 Apache-2.0 使用。
+- **名称与 Logo 不随代码授权**：可以 fork、可以改，不要暗示作者背书。
 - 随包第三方组件各受其许可证约束，见 `docs/legal/third-party-notices-v0.md`。
 
 ## 贡献
