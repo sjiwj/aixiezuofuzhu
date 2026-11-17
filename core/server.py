@@ -374,7 +374,7 @@ CFG_STATE = {'sig': None, 'error': None, 'reloads': 0, 'checked_at': None}
 
 def _cfg_sig():
     try:
-        st = os.stat(CFG_PATH)
+        st = os.stat(cfg_path())
     except OSError:
         return ('missing',)
     return (st.st_mtime_ns, st.st_size)
@@ -404,7 +404,7 @@ def ensure_cfg_fresh(force=False):
             _log_config('配置文件不存在，继续使用内存里的旧配置')
             return CFG
         try:
-            with open(CFG_PATH, encoding='utf-8-sig') as f:
+            with open(cfg_path(), encoding='utf-8-sig') as f:
                 new = json.load(f)
             if not isinstance(new, dict):
                 raise ValueError('顶层不是 JSON 对象')
@@ -438,8 +438,25 @@ SETUP_PROVIDERS = [
     {'id': 'ollama', 'name': '本地 Ollama', 'endpoint': 'http://127.0.0.1:11434/v1',
      'model': 'qwen2.5:7b', 'api_key': 'ollama', 'note': '免费，需要先装 Ollama'},
 ]
-CFG_PATH = os.path.join(ROOT, 'config', 'coordinator.json')
-CFG_BAK = CFG_PATH + '.bak'
+def cfg_path():
+    """配置文件路径（读）：数据目录下有一份就用它，否则用仓库里的出厂默认。
+
+    仓库里的 config/coordinator.json 是**所有人的默认值**，作者本机的偏好不该写进去
+    （否则新用户一装好就默认去连 127.0.0.1:3000，不搭网关就写不了字）。
+    """
+    user = os.path.join(CO.data_dir(), 'config', 'coordinator.json')
+    if os.path.isfile(user):
+        return user
+    return os.path.join(ROOT, 'config', 'coordinator.json')
+
+
+def cfg_write_path():
+    """配置文件路径（写）：永远写数据目录，绝不把用户改动落进代码仓库。"""
+    return os.path.join(CO.data_dir(), 'config', 'coordinator.json')
+
+
+def cfg_bak():
+    return cfg_path() + '.bak'
 OLLAMA_TAGS = 'http://127.0.0.1:11434/api/tags'
 # 明显不是真 key 的占位写法
 _KEY_PLACEHOLDER = re.compile(r'(?i)^(x{3,}|sk-x+.*|your.*|placeholder|todo|changeme|change-me|none|null|test|demo|123+|\.\.\.)$')
@@ -471,7 +488,7 @@ def key_valid(k):
 def load_cfg_fresh():
     """每次现读，不走启动时缓存（save 之后要立刻生效）。"""
     try:
-        with open(CFG_PATH, encoding='utf-8-sig') as f:
+        with open(cfg_path(), encoding='utf-8-sig') as f:
             return json.load(f)
     except Exception:
         return {}
@@ -486,26 +503,27 @@ def save_search_enabled(enabled):
     cfg = load_cfg_fresh()
     if not isinstance(cfg, dict) or not cfg:
         return {'ok': False, 'error': 'config_unreadable',
-                'hint': '读不到 %s，没有写入（先修好这个文件）' % CFG_PATH}
+                'hint': '读不到 %s，没有写入（先修好这个文件）' % cfg_path()}
     cur = cfg.get('search')
     if not isinstance(cur, dict):
         cur = {}
     cur['enabled'] = bool(enabled)
     cfg['search'] = cur
-    os.makedirs(os.path.dirname(CFG_PATH), exist_ok=True)
+    p = cfg_write_path()               # 永远写数据目录，不落进代码仓库
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     backup = None
-    if os.path.exists(CFG_PATH):
-        shutil.copy2(CFG_PATH, CFG_BAK)
-        backup = CFG_BAK
-    tmp = CFG_PATH + '.tmp~'
+    if os.path.exists(p):
+        shutil.copy2(p, p + '.bak')
+        backup = p + '.bak'
+    tmp = p + '.tmp~'
     with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
         f.write('\n')
         f.flush()
         os.fsync(f.fileno())
-    os.replace(tmp, CFG_PATH)
+    os.replace(tmp, p)
     reload_cfg()                     # 立刻生效，不用重启进程
-    return {'ok': True, 'enabled': bool(enabled), 'config_path': CFG_PATH, 'backup': backup}
+    return {'ok': True, 'enabled': bool(enabled), 'config_path': p, 'backup': backup}
 
 
 
@@ -613,7 +631,7 @@ def save_agent_settings(data):
     cfg = load_cfg_fresh()
     if not isinstance(cfg, dict) or not cfg:
         return {'ok': False, 'error': 'config_unreadable',
-                'hint': '读不到 %s，没有写入（先修好这个文件）' % CFG_PATH}
+                'hint': '读不到 %s，没有写入（先修好这个文件）' % cfg_path()}
     cur = cfg.get('agent')
     if not isinstance(cur, dict):
         cur = {}
@@ -621,20 +639,21 @@ def save_agent_settings(data):
         if k in data:
             cur[k] = int(data[k]) if k == 'assistant_timeout' else bool(data.get(k))
     cfg['agent'] = cur
-    os.makedirs(os.path.dirname(CFG_PATH), exist_ok=True)
+    p = cfg_write_path()               # 永远写数据目录，不落进代码仓库
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     backup = None
-    if os.path.exists(CFG_PATH):
-        shutil.copy2(CFG_PATH, CFG_BAK)
-        backup = CFG_BAK
-    tmp = CFG_PATH + '.tmp~'
+    if os.path.exists(p):
+        shutil.copy2(p, p + '.bak')
+        backup = p + '.bak'
+    tmp = p + '.tmp~'
     with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
         f.write('\n')
         f.flush()
         os.fsync(f.fileno())
-    os.replace(tmp, CFG_PATH)
+    os.replace(tmp, p)
     reload_cfg()
-    return {'ok': True, 'agent': cur, 'config_path': CFG_PATH, 'backup': backup}
+    return {'ok': True, 'agent': cur, 'config_path': p, 'backup': backup}
 
 
 def mask_cfg(cfg):
@@ -704,8 +723,8 @@ def setup_status():
             'last_error': CFG_STATE['error'],
             'checked_at': CFG_STATE['checked_at'],
         },
-        'config_path': CFG_PATH,
-        'has_backup': os.path.exists(CFG_BAK),
+        'config_path': cfg_path(),
+        'has_backup': os.path.exists(cfg_bak()),
     }
 
 
@@ -853,22 +872,23 @@ def setup_save(endpoint, api_key, model, gateway=None):
                 gw[k] = gateway[k]
         cfg['gateway'] = gw
 
-    os.makedirs(os.path.dirname(CFG_PATH), exist_ok=True)
+    p = cfg_write_path()               # 永远写数据目录，不落进代码仓库
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     backup = None
-    if os.path.exists(CFG_PATH):
-        shutil.copy2(CFG_PATH, CFG_BAK)
-        backup = CFG_BAK
-    tmp = CFG_PATH + '.tmp~'
+    if os.path.exists(p):
+        shutil.copy2(p, p + '.bak')
+        backup = p + '.bak'
+    tmp = p + '.tmp~'
     with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
         f.write('\n')
         f.flush()
         os.fsync(f.fileno())
-    os.replace(tmp, CFG_PATH)
+    os.replace(tmp, p)
     reload_cfg()
     gw_now = CO.gateway_cfg(cfg)
     return {'ok': True, 'configured': key_valid(key), 'backup': backup,
-            'config_path': CFG_PATH,
+            'config_path': cfg_path(),
             'current': {'model': model, 'endpoint': ep, 'api_key': mask_key(key)},
             'gateway': {'enabled': bool(gw_now['enabled']), 'base': gw_now.get('base'),
                         'has_key': bool(gw_now.get('downstream_key')),
@@ -4564,7 +4584,7 @@ class H(BaseHTTPRequestHandler):
                     'model_after': after,
                     'error': CFG_STATE['error'],
                     'reloads': CFG_STATE['reloads'],
-                    'config_path': CFG_PATH,
+                    'config_path': cfg_path(),
                     'log': os.path.join(CO.LOG_DIR, 'config.log')}, 200)
 
     # -------- 配置引导 --------

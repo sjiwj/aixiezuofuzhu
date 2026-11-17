@@ -381,6 +381,19 @@ def take_worker_calls():
 
 
 def load_cfg(name='config/coordinator.json'):
+    """读配置：先看数据目录 config/ 下的同名文件（用户自己的），没有再读仓库默认。
+
+    为什么这么改：仓库里的 config/coordinator.json 是**出厂默认值**，会被所有下载者继承。
+    作者本机的偏好（比如 gateway.enabled=true）不该写进出厂默认——那会让新用户
+    一装好就默认去连 127.0.0.1:3000，不搭网关就写不了字。
+    现在作者把自己的配置放在 data/config/ 下（已被 .gitignore 排除），互不干扰。
+    """
+    user_copy = os.path.join(data_dir(), 'config', os.path.basename(name))
+    if os.path.isfile(user_copy):
+        try:
+            return json.load(open(user_copy, encoding='utf-8'))
+        except Exception:
+            pass                      # 用户那份坏了就当没有，别挡住启动
     return json.load(open(os.path.join(ROOT, name), encoding='utf-8'))
 
 

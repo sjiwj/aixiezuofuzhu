@@ -22,12 +22,17 @@ python core\desktop.py --dev
 
 ## 模型怎么接
 
-两条路，任选：
+两条路，**默认走第 1 条**（不需要装额外东西）：
 
-1. **自建网关（推荐，成本可核）**：本机跑一个兼容 OpenAI 的网关，监听 `127.0.0.1:3000`，
-   应用默认指向 `http://127.0.0.1:3000/v1`。
-2. **直连厂商**：在设置里把 base 改成厂商地址并填自己的 key。
+1. **直连厂商（默认）**：打开「设置 → 模型」，填你自己的 key 即可。
+   出厂配置 `config/coordinator.json` 里 `gateway.enabled = false`，所以你不需要任何本地服务。
+2. **自建网关（可选，成本可核）**：本机跑一个兼容 OpenAI 的网关（如 `new-api`），
+   监听 `127.0.0.1:3000`，然后在设置里打开「走网关」。
+   好处是换模型只改一处、所有调用从一个地方看账单。
 
+> 你自己的偏好写在数据目录里（`%APPDATA%\novelapp-desktop\data\config\coordinator.json`），
+> 不会改到仓库里的出厂默认值，也不会在 `git status` 里显示。
+>
 > 关键：**模型费用由你自己付给厂商或网关，本项目不代收、不加价**。账单页显示的是
 > 你自己的用量与估算成本（`cost_cny`），不是收费单。
 
@@ -148,24 +153,36 @@ curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:8770/
 | `GET /` | `200`，约 121k 字符 |
 | 首启耗时 | ≤ 2 秒（实测 1 秒） |
 
-## 附录 B · 网关 3000 不通（最常见）
+## 附录 B · 模型调不通
 
-症状：写章/润色报 `URLError [WinError 10061] 由于目标计算机积极拒绝`，或 `key_source` 为空。
+症状：写章/润色报 `URLError [WinError 10061] 由于目标计算机积极拒绝`、`connect_failed`、或提示找不到令牌。
+
+先分辨你走的是哪条路：
+
+**A. 直连厂商（默认配置）**
+
+1. 打开「设置 → 模型」，确认填了 key（`sk-` 开头，不是占位符）
+2. 点「测试连接」，看返回的 `error`
+3. `401/403` = key 错或过期；`connect_failed` = endpoint 写错或网络不通
+
+**B. 走本地网关（你自己打开的那条路）**
 
 ```powershell
 Test-NetConnection 127.0.0.1 -Port 3000 -InformationLevel Quiet
 netstat -ano | findstr :3000
-Get-Process new-api -ErrorAction SilentlyContinue | Select-Object Id,StartTime
-pwsh -NoProfile -File D:\relay\start-new-api.ps1
-curl.exe -s -H "Authorization: Bearer <你的sk-key>" http://127.0.0.1:3000/v1/models
+curl.exe -s -o NUL -w "%{http_code}`n" http://127.0.0.1:3000/v1/models
 ```
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 端口 False、无进程 | 没人拉起（自启只在登录触发一次） | 手动跑启动脚本；或加计划任务每 5 分钟探测 |
-| 端口 True 但 401 | key 不对/不是同一个网关 | 见附录 D |
-| `EADDRINUSE` | 已有实例或别的程序占了 3000 | `netstat -ano` 找 PID，确认后结束或改端口 |
+| 端口 False、无进程 | 网关没起（自启可能只在登录时触发一次） | 启动你自己的网关程序 |
+| 端口 True 但 401 | key 不对，或不是同一个网关 | 用网关后台发的那把 key |
+| `EADDRINUSE` | 3000 被别的程序占了 | `netstat -ano` 找 PID，换端口 |
 | 日志报 `TRUSTED_PROXIES is unset` | 只是警告 | 忽略；要反代再配 |
+
+**C. 提示「尚未登录：找不到客户专属令牌」**
+
+说明还没登录账号：设置 → 登录。这条与厂商 key 是两回事。
 
 ## 附录 C · 网关数据库（SQLite）
 

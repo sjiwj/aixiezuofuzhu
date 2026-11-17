@@ -39,7 +39,7 @@
     "parallel_subagents": false
   },
   "gateway": {
-    "enabled": true,
+    "enabled": false,
     "base": "http://127.0.0.1:3000/v1",
     "downstream_key": "",
     "fee_rate": 0
