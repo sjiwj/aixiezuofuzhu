@@ -62,8 +62,11 @@ def main():
     for f in files:
         if f.lower().endswith(BINARY):
             continue
-        if f == 'scripts/_verify_no_private_data.py':
-            continue                      # 本文件含检测用正则，跳过自身
+        if f in ('scripts/_verify_no_private_data.py',
+                 'scripts/_pre_publish_check.py',
+                 'scripts/_scrub_proper_nouns.py',
+                 'issues/REQ-purge-old-commits.md'):
+            continue                      # 检测脚本自身含检测用正则；清除请求里要写规则说明
         body = git('show', '%s:%s' % (rev, f))
         if not body:
             continue
