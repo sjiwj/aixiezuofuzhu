@@ -35,6 +35,7 @@ if not getattr(sys, 'frozen', False):
 import coordinator as CO
 import precheck_input                    # 第 2 保险：写前粗筛（区别于 precheck 的写后机检）
 import redline                          # 第 3 保险：写盘红线（隐藏路径/定稿保护）
+import task_queue                       # 任务循环：待办队列与「下一章」推荐
 from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 import yamlite
 import reviewers as RV
@@ -2295,6 +2296,30 @@ class H(BaseHTTPRequestHandler):
         self._json({'ok': True, 'kind': kind, 'book': book, 'name': name,
                     'path': norm, 'chars': len(content), 'check': chk}, 200)
 
+    def _queue(self, q):
+        """GET /api/queue?book= —— 待办全表（章号/状态/有无章纲/是否有错题待办/分数与理由）。"""
+        book = (q.get('book') or [''])[0].strip()
+        if not book:
+            self._json({'ok': False, 'error': 'book 必填'}, 400)
+            return
+        if not os.path.isdir(os.path.join(PROJECTS, book)):
+            self._json({'ok': False, 'error': '书不存在：%s' % book}, 404)
+            return
+        self._json(task_queue.build_queue(book, PROJECTS), 200)
+
+    def _queue_next(self, data):
+        """POST /api/queue/next {book} —— 下一个该处理的章。写不写仍由人决定。"""
+        book = str(data.get('book') or '').strip()
+        if not book:
+            self._json({'ok': False, 'error': 'book 必填'}, 400)
+            return
+        if not os.path.isdir(os.path.join(PROJECTS, book)):
+            self._json({'ok': False, 'error': '书不存在：%s' % book}, 404)
+            return
+        nxt = task_queue.next_item(book, PROJECTS)
+        self._json({'ok': True, 'book': book, 'next': nxt,
+                    'hint': '这只是建议；写之前还会再过一遍 precheck_input'}, 200)
+
     def _err(self, msg, code=400, **extra):
         payload = {'error': msg}
         payload.update(extra)
@@ -3190,6 +3215,8 @@ class H(BaseHTTPRequestHandler):
                             'projects_root': PROJECTS})
             elif u.path == '/api/entries':                    # M0-GET-ROUTES
                 self._json(entries_payload(), 200)
+            elif u.path == '/api/queue':                      # 任务循环：待办全表
+                self._queue(q)
             elif u.path == '/api/outline':                    # 大纲：列目录 / 读单篇
                 self._entry_dir(q, 'outline')
             elif u.path == '/api/settings':                   # 设定库：列目录 / 读单篇
@@ -3425,6 +3452,8 @@ class H(BaseHTTPRequestHandler):
                 self._recheck(data)
             elif u.path == '/api/layers/clear':
                 self._layers_clear(data)
+            elif u.path == '/api/queue/next':                 # 任务循环：下一个该处理哪章
+                self._queue_next(data)
             elif u.path == '/api/ai-detect':
                 self._ai_detect(data)
             elif u.path == '/api/ai-detect/text':
