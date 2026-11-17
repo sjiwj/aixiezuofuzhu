@@ -48,13 +48,13 @@ GOOD = """<details>
 
 def unit(d):
     cases = [
-        ('正常', dict(book='书A', chapter='003'), True, []),
-        ('缺大纲', dict(book='书A', chapter='009'), False, ['precheck.no_outline']),
-        ('一句话章纲', dict(book='书A', chapter='004'), True, []),
-        ('占位残留', dict(book='书A', chapter='005'), False, ['precheck.placeholder']),
-        ('章号非法', dict(book='书A', chapter='第三章'), False, ['precheck.chapter_no']),
-        ('覆盖定稿', dict(book='书A', chapter='003', stage='done'), True, []),
-        ('force 放行', dict(book='书A', chapter='009', force=True), True, []),
+        ('正常', dict(book='示例书', chapter='003'), True, []),
+        ('缺大纲', dict(book='示例书', chapter='009'), False, ['precheck.no_outline']),
+        ('一句话章纲', dict(book='示例书', chapter='004'), True, []),
+        ('占位残留', dict(book='示例书', chapter='005'), False, ['precheck.placeholder']),
+        ('章号非法', dict(book='示例书', chapter='第三章'), False, ['precheck.chapter_no']),
+        ('覆盖定稿', dict(book='示例书', chapter='003', stage='done'), True, []),
+        ('force 放行', dict(book='示例书', chapter='009', force=True), True, []),
     ]
     bad = 0
     for label, kw, expect_ok, expect_codes in cases:
@@ -64,11 +64,11 @@ def unit(d):
         bad += 0 if ok else 1
         print('  %s  %-10s ok=%-5s block=%s' % ('PASS' if ok else 'FAIL', label, r['ok'], codes or '-'))
     # warn 断言
-    one = PI.screen_write(root=os.path.join(d, 'projects'), book='书A', chapter='004')
+    one = PI.screen_write(root=os.path.join(d, 'projects'), book='示例书', chapter='004')
     ok = 'precheck.outline_one_line' in [x['code'] for x in one['warn']]
     bad += 0 if ok else 1
     print('  %s  warn:一句话章纲 → outline_one_line' % ('PASS' if ok else 'FAIL'))
-    done = PI.screen_write(root=os.path.join(d, 'projects'), book='书A', chapter='003', stage='done')
+    done = PI.screen_write(root=os.path.join(d, 'projects'), book='示例书', chapter='003', stage='done')
     ok = 'precheck.overwrite_done' in [x['code'] for x in done['warn']]
     bad += 0 if ok else 1
     print('  %s  warn:覆盖定稿 → overwrite_done' % ('PASS' if ok else 'FAIL'))
@@ -119,19 +119,19 @@ def integration(d):
                 time.sleep(0.25)
 
         st, txt = req(port, 'POST', '/api/write',
-                      {'book': '书A', 'chapter': '009', 'prompt': '写第九章'})
+                      {'book': '示例书', 'chapter': '009', 'prompt': '写第九章'})
         ok = st == 400 and '前置检查未通过' in txt and 'precheck.no_outline' in txt
         bad += 0 if ok else 1
         print('  %s  缺大纲 → 400 且带 screen' % ('PASS' if ok else 'FAIL'), '|', txt[:90])
 
         st, txt = req(port, 'POST', '/api/write',
-                      {'book': '书A', 'chapter': '第三章', 'prompt': '写'})
+                      {'book': '示例书', 'chapter': '第三章', 'prompt': '写'})
         ok = st == 400 and 'precheck.chapter_no' in txt
         bad += 0 if ok else 1
         print('  %s  章号非法 → 400' % ('PASS' if ok else 'FAIL'), '|', txt[:90])
 
         st, txt = req(port, 'POST', '/api/write',
-                      {'book': '书A', 'chapter': '005', 'prompt': '写'})
+                      {'book': '示例书', 'chapter': '005', 'prompt': '写'})
         ok = st == 400 and 'precheck.placeholder' in txt
         bad += 0 if ok else 1
         print('  %s  占位残留 → 400' % ('PASS' if ok else 'FAIL'), '|', txt[:90])
@@ -146,7 +146,7 @@ def integration(d):
 
 def main():
     d = tempfile.mkdtemp(prefix='pi-')
-    book = os.path.join(d, 'projects', '书A')
+    book = os.path.join(d, 'projects', '示例书')
     os.makedirs(os.path.join(book, '大纲'))
     os.makedirs(os.path.join(book, '章节'))
     open(os.path.join(book, '大纲', '003-赎当.md'), 'w', encoding='utf-8').write(GOOD)

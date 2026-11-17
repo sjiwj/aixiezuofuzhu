@@ -55,7 +55,7 @@ def main():
     chk('C 普通命令放行', r['ok'])
 
     d = tempfile.mkdtemp(prefix='rl-')
-    book = os.path.join(d, 'projects', '书A')
+    book = os.path.join(d, 'projects', '示例书')
     os.makedirs(os.path.join(book, '章节'))
     os.makedirs(os.path.join(book, '大纲'))
     open(os.path.join(book, '章节', '001-a.md'), 'w', encoding='utf-8').write('# 一\n\n正文\n')
@@ -96,34 +96,34 @@ def main():
                 time.sleep(0.25)
 
         st, _ = req('POST', '/api/save',
-                    {'path': 'projects/书A/章节/.stages.json',
+                    {'path': 'projects/示例书/章节/.stages.json',
                      'content': '{"001":{"stage":"draft"}}'})
         disk = open(os.path.join(book, '章节', '.stages.json'), encoding='utf-8').read()
         chk('R1 篡改 .stages.json 被拒', st == 403 and 'done' in disk, 'HTTP %d' % st)
 
         st, _ = req('POST', '/api/save',
-                    {'path': 'projects/书A/章节/001-a.md', 'content': '# 改坏\n'})
+                    {'path': 'projects/示例书/章节/001-a.md', 'content': '# 改坏\n'})
         disk2 = open(os.path.join(book, '章节', '001-a.md'), encoding='utf-8').read()
         chk('R2 覆盖定稿被拒', st == 403 and '改坏' not in disk2, 'HTTP %d' % st)
 
         st, _ = req('POST', '/api/save',
-                    {'path': 'projects/书A/章节/001-a.md', 'content': '# 定稿改了\n', 'force': True})
+                    {'path': 'projects/示例书/章节/001-a.md', 'content': '# 定稿改了\n', 'force': True})
         chk('R2 force 放行', st == 200, 'HTTP %d' % st)
 
-        st, _ = req('POST', '/api/file/delete', {'path': 'projects/书A/章节/001-a.md'})
+        st, _ = req('POST', '/api/file/delete', {'path': 'projects/示例书/章节/001-a.md'})
         chk('R3 删定稿被拒', st == 403 and os.path.isfile(os.path.join(book, '章节', '001-a.md')),
             'HTTP %d' % st)
 
-        st, t = req('POST', '/api/file/delete', {'path': 'projects/书A/章节/001-a.md', 'force': True})
+        st, t = req('POST', '/api/file/delete', {'path': 'projects/示例书/章节/001-a.md', 'force': True})
         chk('R3 force 删（进 trash）', st == 200 and '.trash/' in t, 'HTTP %d' % st)
 
         open(os.path.join(book, '章节', '002-b.md'), 'w', encoding='utf-8').write('# 二\n\n草稿\n')
         st, _ = req('POST', '/api/save',
-                    {'path': 'projects/书A/章节/002-b.md', 'content': '# 二改\n\n草稿正文\n'})
+                    {'path': 'projects/示例书/章节/002-b.md', 'content': '# 二改\n\n草稿正文\n'})
         chk('R4 非定稿照常写', st == 200, 'HTTP %d' % st)
 
         st, _ = req('POST', '/api/save',
-                    {'path': 'projects/书A/大纲/全书大纲.md', 'content': '# 全书大纲\n\n| 003 | x |\n'})
+                    {'path': 'projects/示例书/大纲/全书大纲.md', 'content': '# 全书大纲\n\n| 003 | x |\n'})
         chk('R5 大纲照常写', st == 200, 'HTTP %d' % st)
     finally:
         try:
