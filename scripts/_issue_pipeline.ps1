@@ -117,6 +117,17 @@ $smOk = ($sm | Select-String -Pattern 'SUMMARY PASS').Count -gt 0
 $smCounts = ($sm | Select-String -Pattern 'counts-sum-9').Line -join ' '
 Step 'gate:smoke_entries' $smOk $smCounts
 
+# ---------- 5.5 写错题本（三循环第一环：同类第 3 次自动出提案）----------
+$issueTitle = (($issueText -split "`n") | Where-Object { $_ -match '^#\s' } | Select-Object -First 1) -replace '^#\s*', ''
+if (-not $issueTitle) { $issueTitle = (Split-Path $Issue -Leaf) }
+$recOut = python (Join-Path $Root 'scripts\_issue_recorder.py') `
+    --subject ("issue:" + $Case) --category ([string]$tri.category) --message $issueTitle 2>&1
+$recOk = (($recOut | Select-String -Pattern '"count"').Count -gt 0)
+Step 'wrongbook:record' $recOk (($recOut | Select-Object -First 1) -join '')
+if ((($recOut -join ' ') -match 'PROPOSAL_READY')) {
+    Write-Host '      同类 issue 已满 3 次 → loop_log.proposals() 里有升级提案'
+}
+
 # ---------- 6. PR 描述 ----------
 # 放 issues/ 而不是 repro/：repro/ 是可重生成的自测产物（.gitignore 忽略），
 # issue 与 PR 描述是流程留痕，必须入库。
