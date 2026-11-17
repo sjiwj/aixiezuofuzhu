@@ -58,7 +58,8 @@ docs/legal/文案改动清单-v0.md
 repro/
 repro_out/
 # 运行时数据（用户自己的书与账本）
-data/
+data/*
+!data/config/
 !data/config/ads.json
 **/user_token.json
 *.db

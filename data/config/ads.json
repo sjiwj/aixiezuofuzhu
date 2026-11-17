@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "_note": "enabled=true 才显示；slots 按 starts/ends 过滤；前端可关闭且不追踪点击",
+  "slots": [
+    {
+      "id": "demo-1",
+      "place": "bottom-right",
+      "sponsor": "示例赞助商",
+      "title": "这里可以放你的工具/课程",
+      "text": "固定月费包位，不按点击计费，不收集用户数据。",
+      "url": "https://example.com",
+      "starts": "",
+      "ends": ""
+    }
+  ]
+}
