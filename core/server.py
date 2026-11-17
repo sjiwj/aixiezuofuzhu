@@ -34,6 +34,7 @@ if not getattr(sys, 'frozen', False):
     sys.path.insert(0, os.path.join(ROOT, 'core'))
 import coordinator as CO
 import precheck_input                    # 第 2 保险：写前粗筛（区别于 precheck 的写后机检）
+import redline                          # 第 3 保险：写盘红线（隐藏路径/定稿保护）
 from errors import human, report          # v1.0.1 错误普通话化：界面只显示中文，原文进日志
 import yamlite
 import reviewers as RV
@@ -4612,6 +4613,20 @@ class H(BaseHTTPRequestHandler):
             return
         norm, full = safe_rel(data.get('path', ''), need_ext=ALLOWED_EXT)
         force = bool(data.get('force'))
+        # 第 3 保险：写盘红线（隐藏路径一律拒；定稿覆盖需 force）
+        _rb, _rc = ST.book_of_path(norm), ST.chapter_no(norm)
+        _stage = ''
+        if _rb and _rc:
+            try:
+                _stage = ST.get_stage(_rb, _rc) or ''
+            except Exception:
+                _stage = ''
+        _red = redline.check_write(norm, force=force, stage=_stage, action='write')
+        if not _red['ok']:
+            self._json({'ok': False, 'error': _red['blocked'][0]['reason'],
+                        'redline': _red, 'path': norm,
+                        'hint': '内部状态文件不能从写接口改；定稿章节要改请带 force=true'}, 403)
+            return
         if os.path.isdir(full):
             self._json({'ok': False, 'error': '路径是目录'}, 400)
             return
@@ -4757,6 +4772,20 @@ class H(BaseHTTPRequestHandler):
             return
         if '/章节/' not in norm:
             self._json({'ok': False, 'error': '只允许从「章节」里删除正文文件'}, 400)
+            return
+        # 第 3 保险：删定稿要显式确认
+        _rb, _rc = ST.book_of_path(norm), ST.chapter_no(norm)
+        _stage = ''
+        if _rb and _rc:
+            try:
+                _stage = ST.get_stage(_rb, _rc) or ''
+            except Exception:
+                _stage = ''
+        _red = redline.check_write(norm, force=bool(data.get('force')), stage=_stage, action='delete')
+        if not _red['ok']:
+            self._json({'ok': False, 'error': _red['blocked'][0]['reason'],
+                        'redline': _red, 'path': norm,
+                        'hint': '先改回 draft，或带 force=true 删（仍会进 .trash）'}, 403)
             return
         try:
             trash, stamp = self._trash_dir()
